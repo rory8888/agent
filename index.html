@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DeepSeek客服系统</title>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background-color: #f5f5f5;
+        }
+
+        .chat-container {
+            width: 400px;
+            height: 600px;
+            background-color: white;
+            border-radius: 10px;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.1);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .chat-header {
+            background-color: #4a6fa5;
+            color: white;
+            padding: 15px;
+            text-align: center;
+            font-weight: bold;
+            font-size: 18px;
+        }
+
+        .chat-messages {
+            flex: 1;
+            padding: 15px;
+            overflow-y: auto;
+        }
+
+        .message {
+            margin-bottom: 15px;
+            max-width: 80%;
+            padding: 10px 15px;
+            border-radius: 18px;
+            line-height: 1.4;
+            word-wrap: break-word;
+        }
+
+        .user-message {
+            background-color: #e3f2fd;
+            margin-left: auto;
+            border-bottom-right-radius: 5px;
+        }
+
+        .bot-message {
+            background-color: #f1f1f1;
+            margin-right: auto;
+            border-bottom-left-radius: 5px;
+        }
+
+        .chat-input {
+            display: flex;
+            padding: 10px;
+            border-top: 1px solid #eee;
+        }
+
+        #user-input {
+            flex: 1;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 20px;
+            outline: none;
+            font-size: 14px;
+        }
+
+        #send-button {
+            background-color: #4a6fa5;
+            color: white;
+            border: none;
+            border-radius: 20px;
+            padding: 10px 15px;
+            margin-left: 10px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+
+        #send-button:hover {
+            background-color: #3a5a80;
+        }
+
+        .typing-indicator {
+            display: none;
+            padding: 10px 15px;
+            background-color: #f1f1f1;
+            border-radius: 18px;
+            margin-bottom: 15px;
+            width: fit-content;
+            border-bottom-left-radius: 5px;
+        }
+
+        .typing-indicator span {
+            height: 8px;
+            width: 8px;
+            background-color: #666;
+            border-radius: 50%;
+            display: inline-block;
+            margin: 0 2px;
+            animation: typing 1s infinite ease-in-out;
+        }
+
+        .typing-indicator span:nth-child(2) {
+            animation-delay: 0.2s;
+        }
+
+        .typing-indicator span:nth-child(3) {
+            animation-delay: 0.4s;
+        }
+
+        @keyframes typing {
+            0%, 100% { opacity: 0.4; transform: translateY(0); }
+            50% { opacity: 1; transform: translateY(-3px); }
+        }
+    </style>
+</head>
+<body>
+    <div class="chat-container">
+        <div class="chat-header">DeepSeek客服</div>
+        <div class="chat-messages" id="chat-messages">
+            <div class="typing-indicator" id="typing-indicator">
+                <span></span>
+                <span></span>
+                <span></span>
+            </div>
+        </div>
+        <div class="chat-input">
+            <input type="text" id="user-input" placeholder="输入您的问题..." autocomplete="off">
+            <button id="send-button">发送</button>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const chatMessages = document.getElementById('chat-messages');
+            const userInput = document.getElementById('user-input');
+            const sendButton = document.getElementById('send-button');
+            const typingIndicator = document.getElementById('typing-indicator');
+
+            // 初始欢迎消息
+            addBotMessage('您好！我是安克天猫旗舰店客服，请问有什么可以帮助您的吗？');
+
+            // 发送消息函数
+            function sendMessage() {
+                const message = userInput.value.trim();
+                if (message === '') return;
+
+                // 添加用户消息到聊天界面
+                addUserMessage(message);
+                userInput.value = '';
+
+                // 显示"正在输入"指示器
+                typingIndicator.style.display = 'block';
+                chatMessages.scrollTop = chatMessages.scrollHeight;
+
+                // 调用DeepSeek API
+                fetchDeepSeekResponse(message)
+                    .then(response => {
+                        // 隐藏"正在输入"指示器
+                        typingIndicator.style.display = 'none';
+
+                        // 添加机器人回复到聊天界面
+                        addBotMessage(response);
+                    })
+                    .catch(error => {
+                        typingIndicator.style.display = 'none';
+                        addBotMessage('抱歉，出现了一些问题。请稍后再试。');
+                        console.error('Error:', error);
+                    });
+            }
+
+            // 添加用户消息到聊天界面
+            function addUserMessage(message) {
+                const messageElement = document.createElement('div');
+                messageElement.classList.add('message', 'user-message');
+                messageElement.textContent = message;
+                chatMessages.insertBefore(messageElement, typingIndicator);
+                chatMessages.scrollTop = chatMessages.scrollHeight;
+            }
+
+            // 添加机器人消息到聊天界面
+            function addBotMessage(message) {
+                const messageElement = document.createElement('div');
+                messageElement.classList.add('message', 'bot-message');
+                messageElement.textContent = message;
+                chatMessages.insertBefore(messageElement, typingIndicator);
+                chatMessages.scrollTop = chatMessages.scrollHeight;
+            }
+
+            // 模拟调用DeepSeek API
+            async function fetchDeepSeekResponse(message) {
+                // 这里应该是调用DeepSeek API的实际代码
+                // 以下是模拟实现，实际使用时需要替换为真实的API调用
+
+                // 模拟网络延迟
+                await new Promise(resolve => setTimeout(resolve, 1000 + Math.random() * 2000));
+
+                // 模拟一些简单的回复
+                const responses = {
+                    "你好": "您好！有什么我可以帮助您的吗？",
+                    "你是谁": "我是基于DeepSeek AI的客服助手，随时为您服务。",
+                    "有什么功能": "我可以回答您的问题、提供建议和帮助解决各种问题。",
+                    "谢谢": "不客气！如果还有其他问题，随时告诉我。",
+                    "再见": "再见！祝您有愉快的一天。如果需要帮助，随时回来。"
+                };
+
+                // 检查是否有预设回复
+                const lowerMessage = message.toLowerCase();
+                for (const [key, value] of Object.entries(responses)) {
+                    if (lowerMessage.includes(key.toLowerCase())) {
+                        return value;
+                    }
+                }
+
+                // 默认回复
+                return `我已经收到您的消息："${message}"。作为演示，这是一个模拟回复。在实际应用中，这将连接到DeepSeek API获取真实响应。`;
+            }
+
+            // 事件监听器
+            sendButton.addEventListener('click', sendMessage);
+            userInput.addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    sendMessage();
+                }
+            });
+        });
+    </script>
+</body>
+</html>
