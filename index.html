@@ -2,121 +2,188 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>安克天猫旗舰店客服</title>
     <style>
-        /* 样式保持不变 */
+        /* 优化后的CSS */
+        :root {
+            --primary-color: #2563eb;
+            --secondary-color: #1d4ed8;
+            --user-bg: #3b82f6;
+            --bot-bg: #f1f5f9;
+        }
+
         body {
-            font-family: 'Arial', sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
             margin: 0;
             padding: 0;
             display: flex;
             justify-content: center;
             align-items: center;
-            height: 100vh;
-            background-color: #f5f5f5;
+            min-height: 100vh;
+            background: #f8fafc;
         }
 
         .chat-container {
-            width: 400px;
-            height: 600px;
-            background-color: white;
-            border-radius: 10px;
-            box-shadow: 0 0 20px rgba(0, 0, 0, 0.1);
+            width: 95%;
+            max-width: 600px;
+            height: 90vh;
+            background: white;
+            border-radius: 1rem;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
             display: flex;
             flex-direction: column;
             overflow: hidden;
         }
 
         .chat-header {
-            background-color: #4a6fa5;
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
             color: white;
-            padding: 15px;
+            padding: 1.2rem;
+            font-size: 1.1rem;
+            font-weight: 500;
             text-align: center;
-            font-weight: bold;
-            font-size: 18px;
+            position: relative;
         }
 
         .chat-messages {
             flex: 1;
-            padding: 15px;
+            padding: 1rem;
             overflow-y: auto;
+            scroll-behavior: smooth;
         }
 
         .message {
-            margin-bottom: 15px;
-            max-width: 80%;
-            padding: 10px 15px;
-            border-radius: 18px;
-            line-height: 1.4;
-            word-wrap: break-word;
+            max-width: 85%;
+            margin: 0.5rem 0;
+            padding: 0.8rem 1.2rem;
+            border-radius: 1.2rem;
+            line-height: 1.5;
+            word-break: break-word;
+            animation: messageAppear 0.3s ease-out;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+        }
+
+        @keyframes messageAppear {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
         }
 
         .user-message {
-            background-color: #e3f2fd;
+            background: var(--user-bg);
+            color: white;
             margin-left: auto;
-            border-bottom-right-radius: 5px;
+            border-bottom-right-radius: 0.4rem;
         }
 
         .bot-message {
-            background-color: #f1f1f1;
+            background: var(--bot-bg);
             margin-right: auto;
-            border-bottom-left-radius: 5px;
+            border-bottom-left-radius: 0.4rem;
         }
 
         .chat-input {
             display: flex;
-            padding: 10px;
-            border-top: 1px solid #eee;
+            gap: 0.8rem;
+            padding: 1rem;
+            border-top: 1px solid #e2e8f0;
+            background: #f8fafc;
         }
 
         #user-input {
             flex: 1;
-            padding: 10px;
-            border: 1px solid #ddd;
-            border-radius: 20px;
+            padding: 0.8rem 1.2rem;
+            border: 2px solid #e2e8f0;
+            border-radius: 2rem;
+            font-size: 1rem;
+            transition: all 0.2s;
+        }
+
+        #user-input:focus {
             outline: none;
-            font-size: 14px;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
         }
 
         #send-button {
-            background-color: #4a6fa5;
+            background: var(--primary-color);
             color: white;
             border: none;
-            border-radius: 20px;
-            padding: 10px 15px;
-            margin-left: 10px;
+            border-radius: 50%;
+            width: 42px;
+            height: 42px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
             cursor: pointer;
-            transition: background-color 0.3s;
+            transition: background 0.2s;
         }
 
         #send-button:hover {
-            background-color: #3a5a80;
+            background: var(--secondary-color);
+        }
+
+        #send-button svg {
+            width: 20px;
+            height: 20px;
+            margin-left: 2px;
         }
 
         .typing-indicator {
             display: none;
-            padding: 10px 15px;
-            background-color: #f1f1f1;
-            border-radius: 18px;
-            margin-bottom: 15px;
+            padding: 0.8rem 1.2rem;
+            background: var(--bot-bg);
+            border-radius: 1.2rem;
             width: fit-content;
-            border-bottom-left-radius: 5px;
+            margin: 0.5rem 0;
         }
 
-        .typing-indicator span {
-            height: 8px;
+        .typing-dots {
+            display: flex;
+            gap: 0.4rem;
+        }
+
+        .typing-dots span {
             width: 8px;
-            background-color: #666;
+            height: 8px;
+            background: #64748b;
             border-radius: 50%;
-            display: inline-block;
-            margin: 0 2px;
-            animation: typing 1s infinite ease-in-out;
+            animation: typing 1.2s infinite ease-in-out;
+        }
+
+        .typing-dots span:nth-child(2) {
+            animation-delay: 0.2s;
+        }
+
+        .typing-dots span:nth-child(3) {
+            animation-delay: 0.4s;
         }
 
         @keyframes typing {
-            0%, 100% { opacity: 0.4; transform: translateY(0); }
-            50% { opacity: 1; transform: translateY(-3px); }
+            0%, 100% { transform: translateY(0); opacity: 0.6; }
+            50% { transform: translateY(-4px); opacity: 1; }
+        }
+
+        @media (max-width: 480px) {
+            .chat-container {
+                height: 100vh;
+                border-radius: 0;
+            }
+            
+            .chat-header {
+                border-radius: 0;
+            }
+            
+            .message {
+                max-width: 90%;
+                font-size: 0.95rem;
+            }
         }
     </style>
 </head>
@@ -125,14 +192,20 @@
         <div class="chat-header">安克天猫旗舰店客服（制作者：rory）</div>
         <div class="chat-messages" id="chat-messages">
             <div class="typing-indicator" id="typing-indicator">
-                <span></span>
-                <span></span>
-                <span></span>
+                <div class="typing-dots">
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                </div>
             </div>
         </div>
         <div class="chat-input">
             <input type="text" id="user-input" placeholder="输入您的问题..." autocomplete="off">
-            <button id="send-button">发送</button>
+            <button id="send-button">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"/>
+                </svg>
+            </button>
         </div>
     </div>
 
@@ -159,34 +232,31 @@
                 userInput.value = '';
                 isBotResponding = true;
                 typingIndicator.style.display = 'block';
+                keepScrollBottom();
                 
                 try {
                     const tempMessage = createTempMessage();
                     let fullResponse = '';
 
                     await fetchDeepSeekStream(message, (content) => {
-                        // 累积内容到缓冲区
                         buffer.push(content);
                         fullResponse += content;
                         
-                        // 使用定时器实现节流渲染
                         if (!renderTimer) {
                             renderTimer = setTimeout(() => {
                                 tempMessage.textContent += buffer.join('');
                                 buffer = [];
                                 renderTimer = null;
                                 keepScrollBottom();
-                            }, 30); // 每50ms更新一次
+                            }, 50);
                         }
                     });
 
-                    // 确保最后的内容刷新
                     if (buffer.length > 0) {
                         tempMessage.textContent += buffer.join('');
                         buffer = [];
                     }
                     
-                    // 保存完整响应到数据集
                     tempMessage.dataset.fullContent = fullResponse;
                     tempMessage.classList.add('bot-message');
                 } catch (error) {
@@ -195,14 +265,14 @@
                 } finally {
                     isBotResponding = false;
                     typingIndicator.style.display = 'none';
+                    keepScrollBottom();
                 }
             }
 
             function createTempMessage() {
                 const messageElement = document.createElement('div');
-                messageElement.classList.add('message');
-                messageElement.style.backgroundColor = '#f1f1f1';
-                messageElement.style.borderBottomLeftRadius = '5px';
+                messageElement.className = 'message';
+                messageElement.style.backgroundColor = '#f1f5f9';
                 chatMessages.insertBefore(messageElement, typingIndicator);
                 return messageElement;
             }
@@ -232,9 +302,7 @@
                     })
                 });
 
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
-                }
+                if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
 
                 const reader = response.body.getReader();
                 const decoder = new TextDecoder();
@@ -254,7 +322,7 @@
 
                         try {
                             const parsed = JSON.parse(cleanedLine);
-                            if (parsed.choices[0].delta.content) {
+                            if (parsed.choices[0]?.delta?.content) {
                                 onStream(parsed.choices[0].delta.content);
                             }
                         } catch (err) {
@@ -263,18 +331,14 @@
                     }
                 }
 
-                // 处理最后剩余的内容
                 if (partialLine) {
-                    const cleanedLine = partialLine.replace(/^data: /, '').trim();
-                    if (cleanedLine) {
-                        try {
-                            const parsed = JSON.parse(cleanedLine);
-                            if (parsed.choices[0].delta.content) {
-                                onStream(parsed.choices[0].delta.content);
-                            }
-                        } catch (err) {
-                            console.warn('解析最后数据失败:', err);
+                    try {
+                        const parsed = JSON.parse(partialLine.replace(/^data: /, '').trim());
+                        if (parsed.choices[0]?.delta?.content) {
+                            onStream(parsed.choices[0].delta.content);
                         }
+                    } catch (err) {
+                        console.warn('解析最后数据失败:', err);
                     }
                 }
             }
@@ -285,7 +349,7 @@
 
             function addUserMessage(message) {
                 const messageElement = document.createElement('div');
-                messageElement.classList.add('message', 'user-message');
+                messageElement.className = 'message user-message';
                 messageElement.textContent = message;
                 chatMessages.insertBefore(messageElement, typingIndicator);
                 keepScrollBottom();
@@ -293,7 +357,7 @@
 
             function addBotMessage(message) {
                 const messageElement = document.createElement('div');
-                messageElement.classList.add('message', 'bot-message');
+                messageElement.className = 'message bot-message';
                 messageElement.textContent = message;
                 chatMessages.insertBefore(messageElement, typingIndicator);
                 keepScrollBottom();
@@ -306,6 +370,11 @@
                     e.preventDefault();
                     sendMessage();
                 }
+            });
+
+            // 移动端优化
+            userInput.addEventListener('focus', () => {
+                setTimeout(keepScrollBottom, 300);
             });
         });
     </script>
