@@ -3,8 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>安克客服系统</title>
+    <title>安克天猫旗舰店客服</title>
     <style>
+        /* 样式保持不变 */
         body {
             font-family: 'Arial', sans-serif;
             margin: 0;
@@ -113,14 +114,6 @@
             animation: typing 1s infinite ease-in-out;
         }
 
-        .typing-indicator span:nth-child(2) {
-            animation-delay: 0.2s;
-        }
-
-        .typing-indicator span:nth-child(3) {
-            animation-delay: 0.4s;
-        }
-
         @keyframes typing {
             0%, 100% { opacity: 0.4; transform: translateY(0); }
             50% { opacity: 1; transform: translateY(-3px); }
@@ -149,100 +142,168 @@
             const userInput = document.getElementById('user-input');
             const sendButton = document.getElementById('send-button');
             const typingIndicator = document.getElementById('typing-indicator');
+            let isBotResponding = false;
+            let buffer = [];
+            let renderTimer = null;
 
             // 初始欢迎消息
             addBotMessage('您好！我是安克天猫旗舰店客服，请问有什么可以帮助您的吗？');
 
-            // 发送消息函数
-            function sendMessage() {
+            async function sendMessage() {
+                if (isBotResponding) return;
+                
                 const message = userInput.value.trim();
                 if (message === '') return;
 
-                // 添加用户消息到聊天界面
                 addUserMessage(message);
                 userInput.value = '';
-
-                // 显示"正在输入"指示器
+                isBotResponding = true;
                 typingIndicator.style.display = 'block';
-                chatMessages.scrollTop = chatMessages.scrollHeight;
+                
+                try {
+                    const tempMessage = createTempMessage();
+                    let fullResponse = '';
 
-                // 调用DeepSeek API
-                fetchDeepSeekResponse(message)
-                    .then(response => {
-                        // 隐藏"正在输入"指示器
-                        typingIndicator.style.display = 'none';
-
-                        // 添加机器人回复到聊天界面
-                        addBotMessage(response);
-                    })
-                    .catch(error => {
-                        typingIndicator.style.display = 'none';
-                        addBotMessage('抱歉，出现了一些问题。请稍后再试。');
-                        console.error('Error:', error);
+                    await fetchDeepSeekStream(message, (content) => {
+                        // 累积内容到缓冲区
+                        buffer.push(content);
+                        fullResponse += content;
+                        
+                        // 使用定时器实现节流渲染
+                        if (!renderTimer) {
+                            renderTimer = setTimeout(() => {
+                                tempMessage.textContent += buffer.join('');
+                                buffer = [];
+                                renderTimer = null;
+                                keepScrollBottom();
+                            }, 50); // 每50ms更新一次
+                        }
                     });
+
+                    // 确保最后的内容刷新
+                    if (buffer.length > 0) {
+                        tempMessage.textContent += buffer.join('');
+                        buffer = [];
+                    }
+                    
+                    // 保存完整响应到数据集
+                    tempMessage.dataset.fullContent = fullResponse;
+                    tempMessage.classList.add('bot-message');
+                } catch (error) {
+                    console.error('Error:', error);
+                    addBotMessage('请求失败，请稍后再试');
+                } finally {
+                    isBotResponding = false;
+                    typingIndicator.style.display = 'none';
+                }
             }
 
-            // 添加用户消息到聊天界面
+            function createTempMessage() {
+                const messageElement = document.createElement('div');
+                messageElement.classList.add('message');
+                messageElement.style.backgroundColor = '#f1f1f1';
+                messageElement.style.borderBottomLeftRadius = '5px';
+                chatMessages.insertBefore(messageElement, typingIndicator);
+                return messageElement;
+            }
+
+            async function fetchDeepSeekStream(message, onStream) {
+                const apiUrl = 'https://api.deepseek.com/v1/chat/completions';
+                const apiKey = 'sk-85010c6ed97e442fbf8b23aa551fa57b';
+
+                const response = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${apiKey}`
+                    },
+                    body: JSON.stringify({
+                        model: "deepseek-chat",
+                        messages: [
+                            { 
+                                role: "system", 
+                                content: "你是安克天猫旗舰店的客服助手。请用简洁明了的语言回答用户问题，保持自然对话风格，适当使用换行分段。回答请使用中文。" 
+                            },
+                            { role: "user", content: message }
+                        ],
+                        temperature: 0.7,
+                        max_tokens: 2000,
+                        stream: true
+                    })
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
+                const reader = response.body.getReader();
+                const decoder = new TextDecoder();
+                let partialLine = '';
+
+                while (true) {
+                    const { done, value } = await reader.read();
+                    if (done) break;
+
+                    const chunk = decoder.decode(value, { stream: true });
+                    const lines = (partialLine + chunk).split('\n');
+                    partialLine = lines.pop() || '';
+
+                    for (const line of lines) {
+                        const cleanedLine = line.replace(/^data: /, '').trim();
+                        if (!cleanedLine) continue;
+
+                        try {
+                            const parsed = JSON.parse(cleanedLine);
+                            if (parsed.choices[0].delta.content) {
+                                onStream(parsed.choices[0].delta.content);
+                            }
+                        } catch (err) {
+                            console.warn('解析JSON失败:', err);
+                        }
+                    }
+                }
+
+                // 处理最后剩余的内容
+                if (partialLine) {
+                    const cleanedLine = partialLine.replace(/^data: /, '').trim();
+                    if (cleanedLine) {
+                        try {
+                            const parsed = JSON.parse(cleanedLine);
+                            if (parsed.choices[0].delta.content) {
+                                onStream(parsed.choices[0].delta.content);
+                            }
+                        } catch (err) {
+                            console.warn('解析最后数据失败:', err);
+                        }
+                    }
+                }
+            }
+
+            function keepScrollBottom() {
+                chatMessages.scrollTop = chatMessages.scrollHeight;
+            }
+
             function addUserMessage(message) {
                 const messageElement = document.createElement('div');
                 messageElement.classList.add('message', 'user-message');
                 messageElement.textContent = message;
                 chatMessages.insertBefore(messageElement, typingIndicator);
-                chatMessages.scrollTop = chatMessages.scrollHeight;
+                keepScrollBottom();
             }
 
-            // 添加机器人消息到聊天界面
             function addBotMessage(message) {
                 const messageElement = document.createElement('div');
                 messageElement.classList.add('message', 'bot-message');
                 messageElement.textContent = message;
                 chatMessages.insertBefore(messageElement, typingIndicator);
-                chatMessages.scrollTop = chatMessages.scrollHeight;
+                keepScrollBottom();
             }
-            
-            // 模拟调用DeepSeek API
-            async function fetchDeepSeekResponse(messages) {
-    try {
-        // DeepSeek API 端点
-        const apiUrl = 'https://api.deepseek.com/v1/chat/completions';
-        
-        //API 密钥 (注意: 只是这样展示，实际不会把密钥搞到前端这么离谱)
-        const apiKey = 'sk-85010c6ed97e442fbf8b23aa551fa57b';
-        
-        const response = await fetch(apiUrl, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${apiKey}`
-            },
-            body: JSON.stringify({
-                model: "deepseek-chat",
-                messages: [
-                { role: "system", content: "你是安克天猫旗舰店的客服助手。" },
-                { role: "user", content: messages }
-                                                     ],
-                 temperature: 0.7,
-                max_tokens: 2000
-                })
 
-        });
-        
-        if (!response.ok) {
-            throw new Error(`API请求失败: ${response.status}`);
-        }
-        
-        const data = await response.json();
-        return data.choices[0].message.content;
-    } catch (error) {
-        console.error('API调用失败:', error);
-        throw error;
-    }
-}
-
-            // 事件监听器
+            // 事件监听
             sendButton.addEventListener('click', sendMessage);
-            userInput.addEventListener('keypress', function(e) {
-                if (e.key === 'Enter') {
+            userInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
                     sendMessage();
                 }
             });
