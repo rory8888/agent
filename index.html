@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>DeepSeek客服系统</title>
+    <title>安克客服系统</title>
     <style>
         body {
             font-family: 'Arial', sans-serif;
@@ -129,7 +129,7 @@
 </head>
 <body>
     <div class="chat-container">
-        <div class="chat-header">DeepSeek客服</div>
+        <div class="chat-header">安克天猫旗舰店客服（制作者：rory）</div>
         <div class="chat-messages" id="chat-messages">
             <div class="typing-indicator" id="typing-indicator">
                 <span></span>
@@ -199,35 +199,45 @@
                 chatMessages.insertBefore(messageElement, typingIndicator);
                 chatMessages.scrollTop = chatMessages.scrollHeight;
             }
-
+            
             // 模拟调用DeepSeek API
-            async function fetchDeepSeekResponse(message) {
-                // 这里应该是调用DeepSeek API的实际代码
-                // 以下是模拟实现，实际使用时需要替换为真实的API调用
+            async function fetchDeepSeekResponse(messages) {
+    try {
+        // DeepSeek API 端点
+        const apiUrl = 'https://api.deepseek.com/v1/chat/completions';
+        
+        //API 密钥 (注意: 只是这样展示，实际不会把密钥搞到前端这么离谱)
+        const apiKey = 'sk-85010c6ed97e442fbf8b23aa551fa57b';
+        
+        const response = await fetch(apiUrl, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${apiKey}`
+            },
+            body: JSON.stringify({
+                model: "deepseek-chat",
+                messages: [
+                { role: "system", content: "你是安克天猫旗舰店的客服助手。" },
+                { role: "user", content: messages }
+                                                     ],
+                 temperature: 0.7,
+                max_tokens: 2000
+                })
 
-                // 模拟网络延迟
-                await new Promise(resolve => setTimeout(resolve, 1000 + Math.random() * 2000));
-
-                // 模拟一些简单的回复
-                const responses = {
-                    "你好": "您好！有什么我可以帮助您的吗？",
-                    "你是谁": "我是基于DeepSeek AI的客服助手，随时为您服务。",
-                    "有什么功能": "我可以回答您的问题、提供建议和帮助解决各种问题。",
-                    "谢谢": "不客气！如果还有其他问题，随时告诉我。",
-                    "再见": "再见！祝您有愉快的一天。如果需要帮助，随时回来。"
-                };
-
-                // 检查是否有预设回复
-                const lowerMessage = message.toLowerCase();
-                for (const [key, value] of Object.entries(responses)) {
-                    if (lowerMessage.includes(key.toLowerCase())) {
-                        return value;
-                    }
-                }
-
-                // 默认回复
-                return `我已经收到您的消息："${message}"。作为演示，这是一个模拟回复。在实际应用中，这将连接到DeepSeek API获取真实响应。`;
-            }
+        });
+        
+        if (!response.ok) {
+            throw new Error(`API请求失败: ${response.status}`);
+        }
+        
+        const data = await response.json();
+        return data.choices[0].message.content;
+    } catch (error) {
+        console.error('API调用失败:', error);
+        throw error;
+    }
+}
 
             // 事件监听器
             sendButton.addEventListener('click', sendMessage);
