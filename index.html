@@ -3,379 +3,350 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>CED 客服</title>
+    <title>陈枫然还钱！</title>
     <style>
-        /* 优化后的CSS */
-        :root {
-            --primary-color: #2563eb;
-            --secondary-color: #1d4ed8;
-            --user-bg: #3b82f6;
-            --bot-bg: #f1f5f9;
-        }
-
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        * {
             margin: 0;
             padding: 0;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            min-height: 100vh;
-            background: #f8fafc;
+            box-sizing: border-box;
         }
-
-        .chat-container {
-            width: 95%;
-            max-width: 600px;
-            height: 90vh;
-            background: white;
-            border-radius: 1rem;
-            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+        
+        body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(135deg, #1a1a2e, #16213e, #0f3460);
+            color: #fff;
+            min-height: 100vh;
+            overflow: hidden;
+            position: relative;
+            padding: 20px;
             display: flex;
             flex-direction: column;
-            overflow: hidden;
-        }
-
-        .chat-header {
-            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
-            color: white;
-            padding: 1.2rem;
-            font-size: 1.1rem;
-            font-weight: 500;
-            text-align: center;
-            position: relative;
-        }
-
-        .chat-messages {
-            flex: 1;
-            padding: 1rem;
-            overflow-y: auto;
-            scroll-behavior: smooth;
-        }
-
-        .message {
-            max-width: 85%;
-            margin: 0.5rem 0;
-            padding: 0.8rem 1.2rem;
-            border-radius: 1.2rem;
-            line-height: 1.5;
-            word-break: break-word;
-            animation: messageAppear 0.3s ease-out;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
-        }
-
-        @keyframes messageAppear {
-            from {
-                opacity: 0;
-                transform: translateY(10px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-
-        .user-message {
-            background: var(--user-bg);
-            color: white;
-            margin-left: auto;
-            border-bottom-right-radius: 0.4rem;
-        }
-
-        .bot-message {
-            background: var(--bot-bg);
-            margin-right: auto;
-            border-bottom-left-radius: 0.4rem;
-        }
-
-        .chat-input {
-            display: flex;
-            gap: 0.8rem;
-            padding: 1rem;
-            border-top: 1px solid #e2e8f0;
-            background: #f8fafc;
-        }
-
-        #user-input {
-            flex: 1;
-            padding: 0.8rem 1.2rem;
-            border: 2px solid #e2e8f0;
-            border-radius: 2rem;
-            font-size: 1rem;
-            transition: all 0.2s;
-        }
-
-        #user-input:focus {
-            outline: none;
-            border-color: var(--primary-color);
-            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
-        }
-
-        #send-button {
-            background: var(--primary-color);
-            color: white;
-            border: none;
-            border-radius: 50%;
-            width: 42px;
-            height: 42px;
-            display: flex;
             align-items: center;
             justify-content: center;
+            text-align: center;
+        }
+        
+        /* 粒子背景 */
+        #particles-js {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            top: 0;
+            left: 0;
+            z-index: 1;
+        }
+        
+        .content {
+            position: relative;
+            z-index: 2;
+            max-width: 100%;
+            padding: 20px;
+        }
+        
+        /* 霓虹灯标题 */
+        .neon-title {
+            font-size: 2.8rem;
+            font-weight: 800;
+            margin: 20px 0;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            color: #fff;
+            text-shadow: 
+                0 0 5px #fff,
+                0 0 10px #fff,
+                0 0 20px #ff0080,
+                0 0 30px #ff0080,
+                0 0 40px #ff0080,
+                0 0 55px #ff0080,
+                0 0 75px #ff0080;
+            animation: flicker 1.5s infinite alternate;
+            line-height: 1.2;
+        }
+        
+        /* 霓虹灯闪烁效果 */
+        @keyframes flicker {
+            0%, 19%, 21%, 23%, 25%, 54%, 56%, 100% {
+                text-shadow: 
+                    0 0 5px #fff,
+                    0 0 10px #fff,
+                    0 0 20px #ff0080,
+                    0 0 30px #ff0080,
+                    0 0 40px #ff0080,
+                    0 0 55px #ff0080,
+                    0 0 75px #ff0080;
+            }
+            20%, 24%, 55% {
+                text-shadow: none;
+            }
+        }
+        
+        /* 金额展示 */
+        .money-display {
+            font-size: 5rem;
+            font-weight: 900;
+            margin: 30px 0;
+            color: #ffd700;
+            text-shadow: 
+                0 0 10px #ffd700,
+                0 0 20px #ffd700,
+                0 0 30px #ff8c00;
+            animation: pulse 2s infinite;
+            position: relative;
+        }
+        
+        .money-display::before {
+            content: "¥";
+            font-size: 3rem;
+            margin-right: 10px;
+        }
+        
+        /* 金额脉冲效果 */
+        @keyframes pulse {
+            0% {
+                transform: scale(1);
+                text-shadow: 
+                    0 0 10px #ffd700,
+                    0 0 20px #ffd700,
+                    0 0 30px #ff8c00;
+            }
+            50% {
+                transform: scale(1.1);
+                text-shadow: 
+                    0 0 15px #ffd700,
+                    0 0 30px #ffd700,
+                    0 0 45px #ff8c00;
+            }
+            100% {
+                transform: scale(1);
+                text-shadow: 
+                    0 0 10px #ffd700,
+                    0 0 20px #ffd700,
+                    0 0 30px #ff8c00;
+            }
+        }
+        
+        /* 还钱按钮 */
+        .pay-button {
+            background: linear-gradient(45deg, #ff0080, #ff8c00);
+            color: white;
+            font-size: 1.8rem;
+            font-weight: bold;
+            padding: 20px 40px;
+            border: none;
+            border-radius: 50px;
+            margin: 40px 0;
             cursor: pointer;
-            transition: background 0.2s;
+            box-shadow: 
+                0 0 15px #ff0080,
+                0 0 30px rgba(255, 0, 128, 0.5);
+            position: relative;
+            overflow: hidden;
+            transition: all 0.3s ease;
+            z-index: 3;
+            animation: pulse-button 2s infinite;
         }
-
-        #send-button:hover {
-            background: var(--secondary-color);
+        
+        .pay-button:hover {
+            transform: scale(1.05);
+            box-shadow: 
+                0 0 20px #ff0080,
+                0 0 40px rgba(255, 0, 128, 0.7);
         }
-
-        #send-button svg {
-            width: 20px;
-            height: 20px;
-            margin-left: 2px;
+        
+        /* 按钮脉冲效果 */
+        @keyframes pulse-button {
+            0% {
+                box-shadow: 
+                    0 0 15px #ff0080,
+                    0 0 30px rgba(255, 0, 128, 0.5);
+            }
+            50% {
+                box-shadow: 
+                    0 0 20px #ff0080,
+                    0 0 40px rgba(255, 0, 128, 0.7);
+            }
+            100% {
+                box-shadow: 
+                    0 0 15px #ff0080,
+                    0 0 30px rgba(255, 0, 128, 0.5);
+            }
         }
-
-        .typing-indicator {
-            display: none;
-            padding: 0.8rem 1.2rem;
-            background: var(--bot-bg);
-            border-radius: 1.2rem;
-            width: fit-content;
-            margin: 0.5rem 0;
+        
+        /* 飘落的钞票 */
+        .falling-money {
+            position: absolute;
+            top: -50px;
+            font-size: 2rem;
+            animation: falling linear forwards;
+            z-index: 0;
+            user-select: none;
         }
-
-        .typing-dots {
-            display: flex;
-            gap: 0.4rem;
+        
+        /* 钞票飘落动画 */
+        @keyframes falling {
+            to {
+                transform: translateY(calc(100vh + 50px)) rotate(360deg);
+            }
         }
-
-        .typing-dots span {
-            width: 8px;
-            height: 8px;
-            background: #64748b;
-            border-radius: 50%;
-            animation: typing 1.2s infinite ease-in-out;
+        
+        /* 倒计时 */
+        .deadline {
+            font-size: 1.2rem;
+            margin-top: 20px;
+            background: rgba(255, 0, 0, 0.2);
+            padding: 15px;
+            border-radius: 10px;
+            border: 1px solid rgba(255, 0, 0, 0.5);
+            backdrop-filter: blur(5px);
         }
-
-        .typing-dots span:nth-child(2) {
-            animation-delay: 0.2s;
-        }
-
-        .typing-dots span:nth-child(3) {
-            animation-delay: 0.4s;
-        }
-
-        @keyframes typing {
-            0%, 100% { transform: translateY(0); opacity: 0.6; }
-            50% { transform: translateY(-4px); opacity: 1; }
-        }
-
+        
+        /* 响应式调整 */
         @media (max-width: 480px) {
-            .chat-container {
-                height: 100vh;
-                border-radius: 0;
+            .neon-title {
+                font-size: 2.2rem;
             }
-            
-            .chat-header {
-                border-radius: 0;
+            .money-display {
+                font-size: 4rem;
             }
-            
-            .message {
-                max-width: 90%;
-                font-size: 0.95rem;
+            .pay-button {
+                font-size: 1.5rem;
+                padding: 15px 30px;
             }
+        }
+        
+        @media (max-width: 350px) {
+            .neon-title {
+                font-size: 1.8rem;
+            }
+            .money-display {
+                font-size: 3rem;
+            }
+        }
+        
+        /* 提示文本 */
+        .hint {
+            margin-top: 20px;
+            color: rgba(255, 255, 255, 0.7);
+            font-size: 1rem;
         }
     </style>
 </head>
 <body>
-    <div class="chat-container">
-        <div class="chat-header">CED 客服（制作者：rory）</div>
-        <div class="chat-messages" id="chat-messages">
-            <div class="typing-indicator" id="typing-indicator">
-                <div class="typing-dots">
-                    <span></span>
-                    <span></span>
-                    <span></span>
-                </div>
-            </div>
+    <!-- 粒子背景 -->
+    <div id="particles-js"></div>
+    
+    <div class="content">
+        <h1 class="neon-title">陈枫然，你这里欠我的用什么还！</h1>
+        
+        <div class="money-display">1000</div>
+        
+        <h2 class="neon-title">我找你要了</h2>
+        
+        <button class="pay-button">立即给钱</button>
+        
+        <div class="deadline">
+            最后期限：2025年7月14日
         </div>
-        <div class="chat-input">
-            <input type="text" id="user-input" placeholder="输入您的问题..." autocomplete="off">
-            <button id="send-button">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"/>
-                </svg>
-            </button>
-        </div>
+        
+        <div class="hint">（页面专为iPhone优化，请及时还钱）</div>
     </div>
 
+    <script src="https://cdn.jsdelivr.net/particles.js/2.0.0/particles.min.js"></script>
     <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            const chatMessages = document.getElementById('chat-messages');
-            const userInput = document.getElementById('user-input');
-            const sendButton = document.getElementById('send-button');
-            const typingIndicator = document.getElementById('typing-indicator');
-            let isBotResponding = false;
-            let buffer = [];
-            let renderTimer = null;
-
-            // 初始欢迎消息
-            addBotMessage('您好！我是安克 CED客服，请问有什么可以帮助您的吗？');
-
-            async function sendMessage() {
-                if (isBotResponding) return;
-                
-                const message = userInput.value.trim();
-                if (message === '') return;
-
-                addUserMessage(message);
-                userInput.value = '';
-                isBotResponding = true;
-                typingIndicator.style.display = 'block';
-                keepScrollBottom();
-                
-                try {
-                    const tempMessage = createTempMessage();
-                    let fullResponse = '';
-
-                    await fetchDeepSeekStream(message, (content) => {
-                        buffer.push(content);
-                        fullResponse += content;
-                        
-                        if (!renderTimer) {
-                            renderTimer = setTimeout(() => {
-                                tempMessage.textContent += buffer.join('');
-                                buffer = [];
-                                renderTimer = null;
-                                keepScrollBottom();
-                            }, 50);
-                        }
-                    });
-
-                    if (buffer.length > 0) {
-                        tempMessage.textContent += buffer.join('');
-                        buffer = [];
-                    }
+        // 初始化粒子背景
+        particlesJS("particles-js", {
+            particles: {
+                number: { value: 80, density: { enable: true, value_area: 800 } },
+                color: { value: "#ffffff" },
+                shape: { type: "circle" },
+                opacity: { value: 0.5, random: true },
+                size: { value: 3, random: true },
+                line_linked: {
+                    enable: true,
+                    distance: 150,
+                    color: "#ff0080",
+                    opacity: 0.4,
+                    width: 1
+                },
+                move: {
+                    enable: true,
+                    speed: 2,
+                    direction: "none",
+                    random: true,
+                    straight: false,
+                    out_mode: "out",
+                    bounce: false
+                }
+            },
+            interactivity: {
+                detect_on: "canvas",
+                events: {
+                    onhover: { enable: true, mode: "repulse" },
+                    onclick: { enable: true, mode: "push" },
+                    resize: true
+                }
+            },
+            retina_detect: true
+        });
+        
+        // 创建飘落的钞票
+        function createFallingMoney() {
+            const moneySymbols = ['💰', '💵', '💴', '💶', '💷'];
+            const container = document.body;
+            
+            for (let i = 0; i < 15; i++) {
+                setTimeout(() => {
+                    const money = document.createElement('div');
+                    money.classList.add('falling-money');
+                    money.textContent = moneySymbols[Math.floor(Math.random() * moneySymbols.length)];
                     
-                    tempMessage.dataset.fullContent = fullResponse;
-                    tempMessage.classList.add('bot-message');
-                } catch (error) {
-                    console.error('Error:', error);
-                    addBotMessage('请求失败，请稍后再试');
-                } finally {
-                    isBotResponding = false;
-                    typingIndicator.style.display = 'none';
-                    keepScrollBottom();
-                }
+                    // 随机位置
+                    const leftPos = Math.random() * 100;
+                    money.style.left = `${leftPos}%`;
+                    
+                    // 随机动画时间和延迟
+                    const duration = 8 + Math.random() * 10;
+                    const delay = Math.random() * 5;
+                    money.style.animationDuration = `${duration}s`;
+                    money.style.animationDelay = `${delay}s`;
+                    
+                    container.appendChild(money);
+                    
+                    // 动画结束后移除元素
+                    setTimeout(() => {
+                        money.remove();
+                    }, duration * 1000);
+                }, i * 500);
             }
-
-            function createTempMessage() {
-                const messageElement = document.createElement('div');
-                messageElement.className = 'message';
-                messageElement.style.backgroundColor = '#f1f5f9';
-                chatMessages.insertBefore(messageElement, typingIndicator);
-                return messageElement;
-            }
-
-            async function fetchDeepSeekStream(message, onStream) {
-                const apiUrl = 'https://api.deepseek.com/v1/chat/completions';
-                const apiKey = 'sk-85010c6ed97e442fbf8b23aa551fa57b';
-
-                const response = await fetch(apiUrl, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${apiKey}`
-                    },
-                    body: JSON.stringify({
-                        model: "deepseek-chat",
-                        messages: [
-                            { 
-                                role: "system", 
-                                content: "你是安克 CED的客服助手。请用简洁明了的语言回答用户问题，保持自然对话风格，适当使用换行分段。回答请使用中文。" 
-                            },
-                            { role: "user", content: message }
-                        ],
-                        temperature: 0.7,
-                        max_tokens: 2000,
-                        stream: true
-                    })
-                });
-
-                if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-
-                const reader = response.body.getReader();
-                const decoder = new TextDecoder();
-                let partialLine = '';
-
-                while (true) {
-                    const { done, value } = await reader.read();
-                    if (done) break;
-
-                    const chunk = decoder.decode(value, { stream: true });
-                    const lines = (partialLine + chunk).split('\n');
-                    partialLine = lines.pop() || '';
-
-                    for (const line of lines) {
-                        const cleanedLine = line.replace(/^data: /, '').trim();
-                        if (!cleanedLine) continue;
-
-                        try {
-                            const parsed = JSON.parse(cleanedLine);
-                            if (parsed.choices[0]?.delta?.content) {
-                                onStream(parsed.choices[0].delta.content);
-                            }
-                        } catch (err) {
-                            console.warn('解析JSON失败:', err);
-                        }
-                    }
-                }
-
-                if (partialLine) {
-                    try {
-                        const parsed = JSON.parse(partialLine.replace(/^data: /, '').trim());
-                        if (parsed.choices[0]?.delta?.content) {
-                            onStream(parsed.choices[0].delta.content);
-                        }
-                    } catch (err) {
-                        console.warn('解析最后数据失败:', err);
-                    }
-                }
-            }
-
-            function keepScrollBottom() {
-                chatMessages.scrollTop = chatMessages.scrollHeight;
-            }
-
-            function addUserMessage(message) {
-                const messageElement = document.createElement('div');
-                messageElement.className = 'message user-message';
-                messageElement.textContent = message;
-                chatMessages.insertBefore(messageElement, typingIndicator);
-                keepScrollBottom();
-            }
-
-            function addBotMessage(message) {
-                const messageElement = document.createElement('div');
-                messageElement.className = 'message bot-message';
-                messageElement.textContent = message;
-                chatMessages.insertBefore(messageElement, typingIndicator);
-                keepScrollBottom();
-            }
-
-            // 事件监听
-            sendButton.addEventListener('click', sendMessage);
-            userInput.addEventListener('keypress', (e) => {
-                if (e.key === 'Enter' && !e.shiftKey) {
-                    e.preventDefault();
-                    sendMessage();
-                }
-            });
-
-            // 移动端优化
-            userInput.addEventListener('focus', () => {
-                setTimeout(keepScrollBottom, 300);
-            });
+        }
+        
+        // 初始创建
+        createFallingMoney();
+        
+        // 每10秒重新创建
+        setInterval(createFallingMoney, 15000);
+        
+        // 按钮点击效果
+        document.querySelector('.pay-button').addEventListener('click', function() {
+            this.textContent = '还钱中...';
+            this.disabled = true;
+            
+            // 模拟支付过程
+            setTimeout(() => {
+                this.textContent = '支付成功！';
+                this.style.background = 'linear-gradient(45deg, #00ff00, #00cc00)';
+                this.style.boxShadow = '0 0 20px #00ff00, 0 0 40px rgba(0, 255, 0, 0.7)';
+                
+                // 显示成功消息
+                const successMsg = document.createElement('div');
+                successMsg.textContent = '陈枫然已成功还款1000元！';
+                successMsg.style.color = '#00ff00';
+                successMsg.style.fontSize = '1.5rem';
+                successMsg.style.marginTop = '20px';
+                successMsg.style.textShadow = '0 0 10px #00ff00';
+                successMsg.style.animation = 'flicker 1.5s infinite alternate';
+                document.querySelector('.content').appendChild(successMsg);
+            }, 2000);
         });
     </script>
 </body>
