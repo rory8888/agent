@@ -14,7 +14,6 @@ import {
   AuditOutlined
 } from '@ant-design/icons';
 import { useNavigate, useLocation } from 'react-router-dom';
-import ankerLogo from '/anker-logo.jpg';
 
 const { Header, Sider, Content } = Layout;
 const { Title, Text } = Typography;
@@ -93,7 +92,7 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
               padding: '4px'
             }}>
               <img 
-                src={ankerLogo}
+                src={`${import.meta.env.BASE_URL}anker-logo.jpg`}
                 alt="Anker Logo" 
                 style={{ 
                   width: '100%', 
