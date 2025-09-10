@@ -1,0 +1,24 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm install)",
+      "Read(//c/Users/anker/Desktop/**)",
+      "Bash(copy:*)",
+      "Bash(npm run dev)",
+      "Bash(echo:*)",
+      "Bash(npm run build)",
+      "mcp__ide__getDiagnostics",
+      "Bash(curl:*)",
+      "Bash(pkill:*)",
+      "Bash(taskkill:*)",
+      "Bash(del:*)",
+      "Bash(sed:*)",
+      "Bash(git init:*)",
+      "Bash(git remote add:*)",
+      "Bash(git config:*)",
+      "Bash(git add:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}
