@@ -7,8 +7,9 @@ import {
 import { 
   AuditOutlined, TeamOutlined, EditOutlined, CheckCircleOutlined,
   HistoryOutlined, BarChartOutlined, ExclamationCircleOutlined,
-  SaveOutlined, ReloadOutlined, DownloadOutlined, UserOutlined
+  SaveOutlined, ReloadOutlined, DownloadOutlined, UserOutlined, LineChartOutlined
 } from '@ant-design/icons';
+import ReactECharts from 'echarts-for-react';
 import type { ColumnsType } from 'antd/es/table';
 
 const { Title, Text } = Typography;
@@ -302,6 +303,84 @@ const PDTForecastPage: React.FC = () => {
   const pendingCount = summaryData.filter(item => item.reviewStatus === 'pending').length;
   const rejectedCount = summaryData.filter(item => item.reviewStatus === 'rejected').length;
 
+  // 历史销量折线图配置
+  const getChartOption = () => {
+    return {
+      title: {
+        text: '6个月历史销量趋势',
+        textStyle: {
+          fontSize: 14,
+          fontWeight: 'bold',
+          color: '#262626'
+        },
+        left: 10,
+        top: 10
+      },
+      tooltip: {
+        trigger: 'axis',
+        formatter: function (params: any) {
+          const data = params[0];
+          return `${data.name}<br/>销量: ${data.value.toLocaleString()}<br/>增长率: ${historicalData[data.dataIndex].growth}%`;
+        }
+      },
+      xAxis: {
+        type: 'category',
+        data: historicalData.map(item => item.month),
+        axisLabel: {
+          fontSize: 11,
+          color: '#666'
+        }
+      },
+      yAxis: {
+        type: 'value',
+        axisLabel: {
+          fontSize: 11,
+          color: '#666',
+          formatter: '{value}'
+        },
+        splitLine: {
+          lineStyle: {
+            color: '#f0f0f0'
+          }
+        }
+      },
+      series: [
+        {
+          name: '销量',
+          type: 'line',
+          data: historicalData.map(item => item.sales),
+          smooth: true,
+          lineStyle: {
+            color: '#1890ff',
+            width: 3
+          },
+          itemStyle: {
+            color: '#1890ff'
+          },
+          areaStyle: {
+            color: {
+              type: 'linear',
+              x: 0,
+              y: 0,
+              x2: 0,
+              y2: 1,
+              colorStops: [
+                { offset: 0, color: 'rgba(24, 144, 255, 0.2)' },
+                { offset: 1, color: 'rgba(24, 144, 255, 0.05)' }
+              ]
+            }
+          }
+        }
+      ],
+      grid: {
+        left: 40,
+        right: 20,
+        top: 50,
+        bottom: 40
+      }
+    };
+  };
+
   return (
     <div style={{ 
       padding: '16px',
@@ -496,20 +575,28 @@ const PDTForecastPage: React.FC = () => {
 
             <Divider style={{ margin: '16px 0' }} />
             
-            <Alert
-              message="GTM策略提醒"
-              description={
-                <div style={{ fontSize: '12px' }}>
-                  <div>• Q4重点推广A5634系列</div>
-                  <div>• 新品A8857预期12月上市</div>
-                  <div>• 华南区加大市场投入</div>
-                </div>
-              }
-              type="info"
-              showIcon
-              icon={<BarChartOutlined />}
-              style={{ marginTop: 12 }}
-            />
+            {/* 6个月历史销量折线图 */}
+            <div style={{ 
+              border: '1px solid #f0f0f0',
+              borderRadius: '8px',
+              padding: '12px',
+              backgroundColor: '#fafafa'
+            }}>
+              <div style={{ marginBottom: 8 }}>
+                <Space>
+                  <LineChartOutlined style={{ color: '#1890ff' }} />
+                  <Text strong style={{ fontSize: '13px' }}>销量趋势分析</Text>
+                </Space>
+              </div>
+              <ReactECharts 
+                option={getChartOption()} 
+                style={{ height: '200px', width: '100%' }}
+                opts={{ renderer: 'svg' }}
+              />
+              <Text type="secondary" style={{ fontSize: '11px' }}>
+                基于历史数据预测未来趋势，为调整决策提供参考
+              </Text>
+            </div>
           </Card>
         </Col>
       </Row>
