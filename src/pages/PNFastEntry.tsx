@@ -6,7 +6,7 @@ import {
 } from 'antd';
 import { 
   UserOutlined, EditOutlined, PlusOutlined, DeleteOutlined, SwapOutlined,
-  ImportOutlined, ExportOutlined, UploadOutlined, DownloadOutlined
+  ImportOutlined, ExportOutlined, UploadOutlined, DownloadOutlined, BulbOutlined
 } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
 
@@ -43,72 +43,29 @@ const PNFastEntry: React.FC = () => {
   const [viewMode, setViewMode] = useState<'PN' | 'SKU'>('PN');
   
   const [data, setData] = useState<PNEntryData[]>([
-    {
-      key: '1',
-      pn: 'A5634',
-      region: '华东区',
-      salesPerson: '张三',
-      quantity: 15000
-    },
-    {
-      key: '2',
-      pn: 'A2637',
-      region: '华东区', 
-      salesPerson: '张三',
-      quantity: 12000
-    },
-    {
-      key: '3',
-      pn: 'A1266',
-      region: '华南区',
-      salesPerson: '李四',
-      quantity: 8500
-    }
+    { key: '1', pn: 'A5634', region: '华南区', salesPerson: 'rory', quantity: 15000 },
+    { key: '2', pn: 'A2637', region: '华南区', salesPerson: 'rory', quantity: 12000 },
+    { key: '3', pn: 'A1266', region: '华南区', salesPerson: 'rory', quantity: 8500 },
+    { key: '4', pn: 'A3456', region: '华南区', salesPerson: 'rory', quantity: 9200 },
+    { key: '5', pn: 'A7890', region: '华南区', salesPerson: 'rory', quantity: 6800 },
+    { key: '6', pn: 'A4321', region: '华南区', salesPerson: 'rory', quantity: 11500 },
+    { key: '7', pn: 'A8765', region: '华南区', salesPerson: 'rory', quantity: 7300 },
+    { key: '8', pn: 'A2468', region: '华南区', salesPerson: 'rory', quantity: 9800 },
+    { key: '9', pn: 'A1357', region: '华南区', salesPerson: 'rory', quantity: 5600 },
+    { key: '10', pn: 'A9876', region: '华南区', salesPerson: 'rory', quantity: 10400 }
   ]);
 
   const [skuData, setSkuData] = useState<SKUEntryData[]>([
-    {
-      key: '1',
-      sku: 'A5634-BK-US',
-      region: '华东区',
-      salesPerson: '张三',
-      quantity: 8000
-    },
-    {
-      key: '2',
-      sku: 'A5634-WH-EU',
-      region: '华东区',
-      salesPerson: '张三',
-      quantity: 7000
-    },
-    {
-      key: '3',
-      sku: 'A2637-BK-US',
-      region: '华东区',
-      salesPerson: '张三',
-      quantity: 6500
-    },
-    {
-      key: '4',
-      sku: 'A2637-WH-EU',
-      region: '华东区',
-      salesPerson: '张三',
-      quantity: 5500
-    },
-    {
-      key: '5',
-      sku: 'A1266-BK-US',
-      region: '华南区',
-      salesPerson: '李四',
-      quantity: 4500
-    },
-    {
-      key: '6',
-      sku: 'A1266-WH-EU',
-      region: '华南区',
-      salesPerson: '李四',
-      quantity: 4000
-    }
+    { key: '1', sku: 'A5634-BK-US', region: '华南区', salesPerson: 'rory', quantity: 8000 },
+    { key: '2', sku: 'A5634-WH-EU', region: '华南区', salesPerson: 'rory', quantity: 7000 },
+    { key: '3', sku: 'A2637-BK-US', region: '华南区', salesPerson: 'rory', quantity: 6500 },
+    { key: '4', sku: 'A2637-WH-EU', region: '华南区', salesPerson: 'rory', quantity: 5500 },
+    { key: '5', sku: 'A1266-BK-US', region: '华南区', salesPerson: 'rory', quantity: 4500 },
+    { key: '6', sku: 'A1266-WH-EU', region: '华南区', salesPerson: 'rory', quantity: 4000 },
+    { key: '7', sku: 'A3456-BK-US', region: '华南区', salesPerson: 'rory', quantity: 4200 },
+    { key: '8', sku: 'A3456-WH-EU', region: '华南区', salesPerson: 'rory', quantity: 3800 },
+    { key: '9', sku: 'A7890-BK-US', region: '华南区', salesPerson: 'rory', quantity: 3600 },
+    { key: '10', sku: 'A7890-WH-EU', region: '华南区', salesPerson: 'rory', quantity: 3200 }
   ]);
 
   const [selectedRegion, setSelectedRegion] = useState<string>('全部');
@@ -123,9 +80,16 @@ const PNFastEntry: React.FC = () => {
   const [exportFields, setExportFields] = useState<string[]>([]);
   const [importing, setImporting] = useState(false);
   const [exporting, setExporting] = useState(false);
+  
+  const [targetModalVisible, setTargetModalVisible] = useState(false);
+  const [targetData, setTargetData] = useState<(PNEntryData | SKUEntryData)[]>([]);
 
   const regions = ['全部', '华东区', '华南区', '华北区', '华中区'];
-  const salesPersons = ['全部', '张三', '李四', '王五'];
+  const salesPersons = ['全部', '张三', '李四', '王五', 'rory'];
+  
+  // 默认值配置
+  const DEFAULT_REGION = '华南区';
+  const DEFAULT_SALES_PERSON = 'rory';
 
   const getCurrentData = () => viewMode === 'PN' ? data : skuData;
   const setCurrentData = (newData: any) => viewMode === 'PN' ? setData(newData) : setSkuData(newData);
@@ -160,6 +124,7 @@ const PNFastEntry: React.FC = () => {
     setEditingRecord(null);
     form.resetFields();
     form.setFieldsValue({
+      region: DEFAULT_REGION,
       mode: 'refresh'
     });
     setModalVisible(true);
@@ -207,11 +172,11 @@ const PNFastEntry: React.FC = () => {
   const getSalesPersonByRegion = (region: string) => {
     const regionSalesMap: Record<string, string> = {
       '华东区': '张三',
-      '华南区': '李四',
+      '华南区': 'rory',
       '华北区': '王五',
       '华中区': '王五'
     };
-    return regionSalesMap[region] || '张三';
+    return regionSalesMap[region] || 'rory';
   };
 
   const handleModalOk = useCallback(async () => {
@@ -534,8 +499,8 @@ const PNFastEntry: React.FC = () => {
               {
                 key: generateKey(),
                 pn: 'A9999',
-                region: '华东区',
-                salesPerson: '张三',
+                region: '华南区',
+                salesPerson: 'rory',
                 quantity: 5000,
                 isNew: true
               },
@@ -543,7 +508,7 @@ const PNFastEntry: React.FC = () => {
                 key: generateKey(),
                 pn: 'A8888',
                 region: '华南区',
-                salesPerson: '李四',
+                salesPerson: 'rory',
                 quantity: 3000,
                 isNew: true
               }
@@ -553,8 +518,8 @@ const PNFastEntry: React.FC = () => {
               {
                 key: generateKey(),
                 sku: 'A9999-BK-US',
-                region: '华东区',
-                salesPerson: '张三',
+                region: '华南区',
+                salesPerson: 'rory',
                 quantity: 5000,
                 isNew: true
               },
@@ -562,7 +527,7 @@ const PNFastEntry: React.FC = () => {
                 key: generateKey(),
                 sku: 'A8888-WH-EU',
                 region: '华南区',
-                salesPerson: '李四',
+                salesPerson: 'rory',
                 quantity: 3000,
                 isNew: true
               }
@@ -659,6 +624,89 @@ const PNFastEntry: React.FC = () => {
     };
     return fieldMap[field] || field;
   };
+
+  const generateTargetData = () => {
+    const targetList: (PNEntryData | SKUEntryData)[] = [];
+    
+    for (let i = 1100; i <= 1150; i++) {
+      if (viewMode === 'PN') {
+        targetList.push({
+          key: `target-${i}`,
+          pn: `A${i}`,
+          region: DEFAULT_REGION,
+          salesPerson: DEFAULT_SALES_PERSON,
+          quantity: 0,
+          isNew: false
+        } as PNEntryData);
+      } else {
+        targetList.push({
+          key: `target-${i}`,
+          sku: `A${i}-BK-US`,
+          region: DEFAULT_REGION,
+          salesPerson: DEFAULT_SALES_PERSON,
+          quantity: 0,
+          isNew: false
+        } as SKUEntryData);
+      }
+    }
+    
+    return targetList;
+  };
+
+  const handleTargetFilling = useCallback(() => {
+    const generatedData = generateTargetData();
+    setTargetData(generatedData);
+    setTargetModalVisible(true);
+  }, [viewMode]);
+
+  const handleTargetConfirm = useCallback(() => {
+    const validTargetData = targetData.filter(item => item.quantity > 0);
+    
+    if (viewMode === 'PN') {
+      setData(prevData => {
+        const newData = [...prevData];
+        (validTargetData as PNEntryData[]).forEach(targetItem => {
+          const existingIndex = newData.findIndex(item => 
+            item.pn === targetItem.pn && item.region === targetItem.region && item.salesPerson === targetItem.salesPerson
+          );
+          if (existingIndex >= 0) {
+            newData[existingIndex] = { ...newData[existingIndex], quantity: targetItem.quantity };
+          } else {
+            newData.push({ ...targetItem, key: generateKey(), isNew: true });
+          }
+        });
+        return newData;
+      });
+    } else {
+      setSkuData(prevData => {
+        const newData = [...prevData];
+        (validTargetData as SKUEntryData[]).forEach(targetItem => {
+          const existingIndex = newData.findIndex(item => 
+            item.sku === targetItem.sku && item.region === targetItem.region && item.salesPerson === targetItem.salesPerson
+          );
+          if (existingIndex >= 0) {
+            newData[existingIndex] = { ...newData[existingIndex], quantity: targetItem.quantity };
+          } else {
+            newData.push({ ...targetItem, key: generateKey(), isNew: true });
+          }
+        });
+        return newData;
+      });
+    }
+    
+    message.success(`已确认${validTargetData.length}个目标${viewMode}的填写数据`);
+    setTargetModalVisible(false);
+  }, [targetData, viewMode]);
+
+  const handleTargetQuantityChange = useCallback((key: string, value: number) => {
+    setTargetData(prevData => 
+      prevData.map(item => 
+        item.key === key 
+          ? { ...item, quantity: value }
+          : item
+      )
+    );
+  }, []);
 
   const getColumns = (): ColumnsType<any> => [
     {
@@ -806,6 +854,16 @@ const PNFastEntry: React.FC = () => {
                 </Button>
               </Tooltip>
               
+              <Tooltip title={`目标${viewMode}填写`}>
+                <Button 
+                  icon={<BulbOutlined />}
+                  onClick={handleTargetFilling}
+                  style={{ borderRadius: '6px' }}
+                >
+                  目标填写
+                </Button>
+              </Tooltip>
+              
               <Button 
                 type="primary"
                 icon={<PlusOutlined />} 
@@ -943,7 +1001,10 @@ const PNFastEntry: React.FC = () => {
         <Form
           form={form}
           layout="vertical"
-          initialValues={{ mode: 'add' }}
+          initialValues={{ 
+            mode: 'refresh',
+            region: DEFAULT_REGION
+          }}
         >
           {viewMode === 'PN' ? (
             <Form.Item
@@ -1146,6 +1207,114 @@ const PNFastEntry: React.FC = () => {
             showIcon
             style={{ fontSize: '12px' }}
           />
+        </div>
+      </Modal>
+
+      {/* 目标填写模态框 */}
+      <Modal
+        title={
+          <Space>
+            <BulbOutlined style={{ color: '#faad14' }} />
+            目标{viewMode}填写 (A1100-A1150)
+          </Space>
+        }
+        open={targetModalVisible}
+        onCancel={() => setTargetModalVisible(false)}
+        width={800}
+        footer={[
+          <Button key="cancel" onClick={() => setTargetModalVisible(false)}>
+            取消
+          </Button>,
+          <Button 
+            key="confirm" 
+            type="primary" 
+            onClick={handleTargetConfirm}
+          >
+            确认填入
+          </Button>
+        ]}
+      >
+        <div style={{ marginBottom: 16 }}>
+          <Alert
+            message="目标填写说明"
+            description={
+              <div>
+                <div>• 请在需要的项目中输入目标数量（大于0）</div>
+                <div>• 点击"确认填入"后，有数量的项目将被添加到主表格中</div>
+                <div>• 默认区域：{DEFAULT_REGION}，Sales：{DEFAULT_SALES_PERSON}</div>
+              </div>
+            }
+            type="info"
+            showIcon
+            style={{ fontSize: '12px' }}
+          />
+        </div>
+        
+        <div style={{ maxHeight: '400px', overflow: 'auto' }}>
+          <Table
+            dataSource={targetData}
+            size="small"
+            pagination={false}
+            scroll={{ y: 300 }}
+            columns={[
+              {
+                title: viewMode,
+                dataIndex: viewMode === 'PN' ? 'pn' : 'sku',
+                key: viewMode === 'PN' ? 'pn' : 'sku',
+                width: 120,
+                render: (text: string) => (
+                  <Tag color="blue" style={{ fontSize: '13px', fontWeight: 'bold' }}>
+                    {text}
+                  </Tag>
+                )
+              },
+              {
+                title: '区域',
+                dataIndex: 'region',
+                key: 'region',
+                width: 100,
+                render: (text: string) => <Tag color="green">{text}</Tag>
+              },
+              {
+                title: 'Sales',
+                dataIndex: 'salesPerson',
+                key: 'salesPerson',
+                width: 100,
+                render: (text: string) => (
+                  <Space size={4}>
+                    <Avatar size={20} style={{ backgroundColor: '#1890ff' }}>
+                      {text.charAt(0).toUpperCase()}
+                    </Avatar>
+                    <Text style={{ fontSize: '12px' }}>{text}</Text>
+                  </Space>
+                )
+              },
+              {
+                title: '目标数量',
+                dataIndex: 'quantity',
+                key: 'quantity',
+                width: 150,
+                render: (val: number, record: any) => (
+                  <InputNumber
+                    size="small"
+                    value={val}
+                    style={{ width: '100%' }}
+                    onChange={(value) => handleTargetQuantityChange(record.key, value || 0)}
+                    formatter={(value) => `${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
+                    parser={(value) => parseInt(value!.replace(/\$\s?|(,*)/g, '')) || 0}
+                    min={0}
+                    placeholder="输入数量"
+                  />
+                )
+              }
+            ]}
+          />
+        </div>
+        
+        <div style={{ marginTop: 16, textAlign: 'center' }}>
+          <Text type="secondary" style={{ fontSize: '12px' }}>
+            已选择 {targetData.filter(item => item.quantity > 0).length} / {targetData.length} 个项目
+          </Text>
         </div>
       </Modal>
 
