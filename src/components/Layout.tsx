@@ -92,7 +92,7 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
               padding: '4px'
             }}>
               <img 
-                src="/anker-logo.jpg" 
+                src={`${import.meta.env.BASE_URL}anker-logo.jpg`}
                 alt="Anker Logo" 
                 style={{ 
                   width: '100%', 
