@@ -44,9 +44,14 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
       label: 'PN快速填写',
     },
     {
+      key: '/pn-audit',
+      icon: <AuditOutlined />,
+      label: 'PN审核',
+    },
+    {
       key: '/pdt-forecast',
       icon: <AuditOutlined />,
-      label: 'PN预测审核',
+      label: 'PDT预测',
     },
     {
       key: '/pn-data',

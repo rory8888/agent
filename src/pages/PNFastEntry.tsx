@@ -1,805 +1,655 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useMemo, memo, useRef } from 'react';
 import { 
   Table, Typography, Space, Button, Tag, Input, Select,
   Card, InputNumber, message, Form, Row, Col, 
-  Statistic, Alert, Tooltip, Avatar, Modal, Radio, Upload, Checkbox
+  Statistic, Alert, Tooltip, Progress, Drawer, Tabs, Switch, Divider
 } from 'antd';
 import { 
-  UserOutlined, EditOutlined, PlusOutlined, DeleteOutlined, SwapOutlined,
-  ImportOutlined, ExportOutlined, UploadOutlined, DownloadOutlined, BulbOutlined
+  EditOutlined, PlusOutlined, DeleteOutlined, SwapOutlined,
+  ImportOutlined, ExportOutlined, SettingOutlined
 } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
 
 const { Title, Text } = Typography;
 const { Option } = Select;
 
-interface PNEntryData {
+interface ForecastEntryData {
   key: string;
-  pn: string;
-  region: string;
-  salesPerson: string;
-  quantity: number;
+  channel: string;           // 渠道
+  sku: string;              // SKU
+  pdt: string;              // PDT
+  singularity: string;       // 奇点细分
+  pn: string;               // PN
+  cnCategory: string;        // CN品类
+  skuName: string;          // SKU名称
+  skuStatus: 'active' | 'inactive' | 'eol' | 'new';  // SKU状态
+  jan2025Sales: number;      // 25年1月销量
+  feb2025Sales: number;      // 25年2月销量
+  mar2025Sales: number;      // 25年3月销量
+  apr2025Sales: number;      // 25年4月销量
+  may2025Sales: number;      // 25年5月销量
+  jun2025Sales: number;      // 25年6月销量
+  jul2025Sales: number;      // 25年7月销量
+  aug2025Sales: number;      // 25年8月销量
+  avgPrice: number;          // 成交均价(未税)
+  q3PlanTotal: number;       // Q3规划合计
+  currentSales: number;      // 当前销量
+  timeProgress: number;      // 时间进度
+  vsTimeProgress: number;    // VS时间进度
+  inventory: number;         // 库存
+  q3Total: number;          // Q3总计
+  // 需要Sales填写的字段
+  augForecast: number;       // 8月预测
+  sepForecast: number;       // 9月预测
+  octForecast: number;       // 10月预测
+  novForecast: number;       // 11月预测
+  decForecast: number;       // 12月预测
+  // 修正字段（只读）
+  aug2Corrected: number;    // 8月（修正）
+  sep2Corrected: number;    // 9月（修正）
+  oct2Corrected: number;    // 10月（修正）
+  nov2Corrected: number;    // 11月（修正）
+  dec2Corrected: number;    // 12月（修正）
   isNew?: boolean;
 }
 
-interface SKUEntryData {
-  key: string;
-  sku: string;
-  region: string;
-  salesPerson: string;
-  quantity: number;
-  isNew?: boolean;
-}
-
-interface NewEntryForm {
-  pn?: string;
-  sku?: string;
-  region: string;
-  quantity: number;
-  mode: 'refresh' | 'add';
-}
+const generateTestData = (): ForecastEntryData[] => {
+  const channels = ['Amazon', 'Best Buy', 'Walmart', 'Target', 'eBay', '天猫', '京东', '拼多多'];
+  const pdts = ['PowerPort', 'PowerCore', 'SoundCore', 'Eufy', 'Nebula', 'AnkerWork', 'Roav', 'PowerWave'];
+  const singularities = ['高端快充', '便携移动电源', '音频设备', '智能家居', '投影设备', '办公设备', '车载设备', '无线充电'];
+  const cnCategories = ['充电器', '移动电源', '音响', '摄像头', '投影仪', '会议设备', '车载产品', '无线充电器'];
+  const statuses: ('active' | 'inactive' | 'eol' | 'new')[] = ['active', 'active', 'active', 'new', 'inactive', 'eol'];
+  
+  const data: ForecastEntryData[] = [];
+  
+  for (let i = 1; i <= 152; i++) {
+    const channel = channels[Math.floor(Math.random() * channels.length)];
+    const pdt = pdts[Math.floor(Math.random() * pdts.length)];
+    const singularity = singularities[Math.floor(Math.random() * singularities.length)];
+    const cnCategory = cnCategories[Math.floor(Math.random() * cnCategories.length)];
+    const status = statuses[Math.floor(Math.random() * statuses.length)];
+    
+    const basePrice = 15 + Math.random() * 85; // 15-100 price range
+    const baseSales = Math.floor(1000 + Math.random() * 4000); // 1000-5000 sales range
+    
+    const jan = Math.floor(baseSales * (0.8 + Math.random() * 0.4));
+    const feb = Math.floor(baseSales * (0.85 + Math.random() * 0.3));
+    const mar = Math.floor(baseSales * (0.9 + Math.random() * 0.2));
+    const apr = Math.floor(baseSales * (0.85 + Math.random() * 0.3));
+    const may = Math.floor(baseSales * (0.8 + Math.random() * 0.4));
+    const jun = Math.floor(baseSales * (0.9 + Math.random() * 0.2));
+    const jul = Math.floor(baseSales * (0.95 + Math.random() * 0.1));
+    const aug = Math.floor(baseSales * (1.0 + Math.random() * 0.1));
+    
+    const currentSales = jan + feb + mar + apr + may + jun + jul + Math.floor(aug * 0.75);
+    const q3PlanTotal = Math.floor(baseSales * 2.8 + Math.random() * 1000);
+    const timeProgress = 75 + Math.random() * 15;
+    const vsTimeProgress = -5 + Math.random() * 25;
+    const inventory = Math.floor(baseSales * (0.5 + Math.random() * 1.5));
+    const q3Total = Math.floor(q3PlanTotal * (1.05 + Math.random() * 0.15));
+    
+    data.push({
+      key: i.toString(),
+      channel,
+      sku: `A${String(1000 + i).slice(1)}-${['BK', 'WH', 'GY', 'BL', 'RD'][Math.floor(Math.random() * 5)]}-${['US', 'EU', 'JP', 'CN'][Math.floor(Math.random() * 4)]}`,
+      pdt,
+      singularity,
+      pn: `A${1000 + i}`,
+      cnCategory,
+      skuName: `${pdt} ${singularity} ${cnCategory} ${channel}版`,
+      skuStatus: status,
+      jan2025Sales: jan,
+      feb2025Sales: feb,
+      mar2025Sales: mar,
+      apr2025Sales: apr,
+      may2025Sales: may,
+      jun2025Sales: jun,
+      jul2025Sales: jul,
+      aug2025Sales: aug,
+      avgPrice: Math.round(basePrice * 100) / 100,
+      q3PlanTotal,
+      currentSales,
+      timeProgress: Math.round(timeProgress * 10) / 10,
+      vsTimeProgress: Math.round(vsTimeProgress * 10) / 10,
+      inventory,
+      q3Total,
+      augForecast: Math.floor(baseSales * (1.0 + Math.random() * 0.2)),
+      sepForecast: Math.floor(baseSales * (1.05 + Math.random() * 0.15)),
+      octForecast: Math.floor(baseSales * (1.1 + Math.random() * 0.1)),
+      novForecast: Math.floor(baseSales * (1.0 + Math.random() * 0.2)),
+      decForecast: Math.floor(baseSales * (0.95 + Math.random() * 0.2)),
+      aug2Corrected: Math.floor(baseSales * (1.02 + Math.random() * 0.16)),
+      sep2Corrected: Math.floor(baseSales * (1.07 + Math.random() * 0.13)),
+      oct2Corrected: Math.floor(baseSales * (1.12 + Math.random() * 0.08)),
+      nov2Corrected: Math.floor(baseSales * (1.02 + Math.random() * 0.18)),
+      dec2Corrected: Math.floor(baseSales * (0.97 + Math.random() * 0.18))
+    });
+  }
+  
+  return data;
+};
 
 const PNFastEntry: React.FC = () => {
-  const [viewMode, setViewMode] = useState<'PN' | 'SKU'>('PN');
-  
-  const [data, setData] = useState<PNEntryData[]>([
-    { key: '1', pn: 'A5634', region: '华南区', salesPerson: 'rory', quantity: 15000 },
-    { key: '2', pn: 'A2637', region: '华南区', salesPerson: 'rory', quantity: 12000 },
-    { key: '3', pn: 'A1266', region: '华南区', salesPerson: 'rory', quantity: 8500 },
-    { key: '4', pn: 'A3456', region: '华南区', salesPerson: 'rory', quantity: 9200 },
-    { key: '5', pn: 'A7890', region: '华南区', salesPerson: 'rory', quantity: 6800 },
-    { key: '6', pn: 'A4321', region: '华南区', salesPerson: 'rory', quantity: 11500 },
-    { key: '7', pn: 'A8765', region: '华南区', salesPerson: 'rory', quantity: 7300 },
-    { key: '8', pn: 'A2468', region: '华南区', salesPerson: 'rory', quantity: 9800 },
-    { key: '9', pn: 'A1357', region: '华南区', salesPerson: 'rory', quantity: 5600 },
-    { key: '10', pn: 'A9876', region: '华南区', salesPerson: 'rory', quantity: 10400 }
-  ]);
-
-  const [skuData, setSkuData] = useState<SKUEntryData[]>([
-    { key: '1', sku: 'A5634-BK-US', region: '华南区', salesPerson: 'rory', quantity: 8000 },
-    { key: '2', sku: 'A5634-WH-EU', region: '华南区', salesPerson: 'rory', quantity: 7000 },
-    { key: '3', sku: 'A2637-BK-US', region: '华南区', salesPerson: 'rory', quantity: 6500 },
-    { key: '4', sku: 'A2637-WH-EU', region: '华南区', salesPerson: 'rory', quantity: 5500 },
-    { key: '5', sku: 'A1266-BK-US', region: '华南区', salesPerson: 'rory', quantity: 4500 },
-    { key: '6', sku: 'A1266-WH-EU', region: '华南区', salesPerson: 'rory', quantity: 4000 },
-    { key: '7', sku: 'A3456-BK-US', region: '华南区', salesPerson: 'rory', quantity: 4200 },
-    { key: '8', sku: 'A3456-WH-EU', region: '华南区', salesPerson: 'rory', quantity: 3800 },
-    { key: '9', sku: 'A7890-BK-US', region: '华南区', salesPerson: 'rory', quantity: 3600 },
-    { key: '10', sku: 'A7890-WH-EU', region: '华南区', salesPerson: 'rory', quantity: 3200 }
-  ]);
+  const [data, setData] = useState<ForecastEntryData[]>(generateTestData());
 
   const [selectedRegion, setSelectedRegion] = useState<string>('全部');
   const [selectedSales, setSelectedSales] = useState<string>('全部');
-  const [modalVisible, setModalVisible] = useState(false);
-  const [editingRecord, setEditingRecord] = useState<PNEntryData | SKUEntryData | null>(null);
-  const [form] = Form.useForm<NewEntryForm>();
   
-  const [importModalVisible, setImportModalVisible] = useState(false);
-  const [exportModalVisible, setExportModalVisible] = useState(false);
-  const [importFileList, setImportFileList] = useState<any[]>([]);
-  const [exportFields, setExportFields] = useState<string[]>([]);
-  const [importing, setImporting] = useState(false);
-  const [exporting, setExporting] = useState(false);
-  
-  const [targetModalVisible, setTargetModalVisible] = useState(false);
-  const [targetData, setTargetData] = useState<(PNEntryData | SKUEntryData)[]>([]);
+  // 防抖处理
+  const debounceTimer = useRef<NodeJS.Timeout>();
+
+  // 列显示控制 - 默认显示所有列
+  const [visibleColumns, setVisibleColumns] = useState<Set<string>>(new Set([
+    'channel', 'sku', 'pdt', 'singularity', 'pn', 'cnCategory', 'skuName', 'skuStatus',
+    'jan2025Sales', 'feb2025Sales', 'mar2025Sales', 'apr2025Sales', 'may2025Sales', 'jun2025Sales', 'jul2025Sales', 'aug2025Sales',
+    'avgPrice', 'q3PlanTotal', 'currentSales', 'timeProgress', 'vsTimeProgress', 'inventory', 'q3Total',
+    'augForecast', 'sepForecast', 'octForecast', 'novForecast', 'decForecast',
+    'aug2Corrected', 'sep2Corrected', 'oct2Corrected', 'nov2Corrected', 'dec2Corrected'
+  ]));
+
+  // 列设置抽屉
+  const [columnSettingsOpen, setColumnSettingsOpen] = useState(false);
 
   const regions = ['全部', '华东区', '华南区', '华北区', '华中区'];
   const salesPersons = ['全部', '张三', '李四', '王五', 'rory'];
-  
-  // 默认值配置
-  const DEFAULT_REGION = '华南区';
-  const DEFAULT_SALES_PERSON = 'rory';
 
-  const getCurrentData = () => viewMode === 'PN' ? data : skuData;
-  const setCurrentData = (newData: any) => viewMode === 'PN' ? setData(newData) : setSkuData(newData);
-  
-  const filteredData = getCurrentData().filter(item => {
-    const regionMatch = selectedRegion === '全部' || item.region === selectedRegion;
-    const salesMatch = selectedSales === '全部' || item.salesPerson === selectedSales;
-    return regionMatch && salesMatch;
+  const filteredData = data.filter(item => {
+    // 这里可以根据需要添加筛选逻辑
+    return true;
   });
 
-  const handleQuantityChange = useCallback((key: string, value: number) => {
-    if (viewMode === 'PN') {
-      setData(prevData => 
-        prevData.map(item => 
-          item.key === key 
-            ? { ...item, quantity: value }
-            : item
-        )
-      );
-    } else {
-      setSkuData(prevData => 
-        prevData.map(item => 
-          item.key === key 
-            ? { ...item, quantity: value }
-            : item
-        )
-      );
-    }
-  }, [viewMode]);
-
-  const handleAddNew = useCallback(() => {
-    setEditingRecord(null);
-    form.resetFields();
-    form.setFieldsValue({
-      region: DEFAULT_REGION,
-      mode: 'refresh'
-    });
-    setModalVisible(true);
-  }, [form]);
-
-  const handleEdit = useCallback((record: PNEntryData | SKUEntryData) => {
-    setEditingRecord(record);
-    if (viewMode === 'PN') {
-      form.setFieldsValue({
-        pn: (record as PNEntryData).pn,
-        region: record.region,
-        quantity: record.quantity,
-        mode: 'refresh'
-      });
-    } else {
-      form.setFieldsValue({
-        sku: (record as SKUEntryData).sku,
-        region: record.region,
-        quantity: record.quantity,
-        mode: 'refresh'
-      });
-    }
-    setModalVisible(true);
-  }, [form, viewMode]);
-
-  const handleDelete = useCallback((key: string) => {
-    Modal.confirm({
-      title: '确认删除',
-      content: '确定要删除这条记录吗？',
-      onOk: () => {
-        if (viewMode === 'PN') {
-          setData(prevData => prevData.filter(item => item.key !== key));
-        } else {
-          setSkuData(prevData => prevData.filter(item => item.key !== key));
-        }
-        message.success('删除成功');
-      }
-    });
-  }, [viewMode]);
-
-  const generateKey = () => {
-    return Date.now().toString();
-  };
-
-  const getSalesPersonByRegion = (region: string) => {
-    const regionSalesMap: Record<string, string> = {
-      '华东区': '张三',
-      '华南区': 'rory',
-      '华北区': '王五',
-      '华中区': '王五'
-    };
-    return regionSalesMap[region] || 'rory';
-  };
-
-  const handleModalOk = useCallback(async () => {
-    try {
-      const values = await form.validateFields();
-      const salesPerson = getSalesPersonByRegion(values.region);
-      
-      if (viewMode === 'PN') {
-        if (editingRecord) {
-          // 编辑现有记录
-          if (values.mode === 'refresh') {
-            setData(prevData => 
-              prevData.map(item => 
-                item.key === editingRecord.key 
-                  ? { ...item, pn: values.pn, region: values.region, quantity: values.quantity, salesPerson }
-                  : item
-              )
-            );
-            message.success('更新成功');
-          } else {
-            // 增加到现有记录
-            setData(prevData => 
-              prevData.map(item => 
-                item.key === editingRecord.key 
-                  ? { ...item, quantity: item.quantity + values.quantity }
-                  : item
-              )
-            );
-            message.success('数量已增加');
-          }
-        } else {
-          // 新增PN记录
-          if (values.mode === 'refresh') {
-            // 刷新模式：直接新增或替换
-            const existingIndex = data.findIndex(item => 
-              item.pn === values.pn && item.region === values.region && item.salesPerson === salesPerson
-            );
-            
-            if (existingIndex >= 0) {
-              // 找到相同PN、区域、Sales的记录，替换数量
-              setData(prevData => 
-                prevData.map((item, index) => 
-                  index === existingIndex 
-                    ? { ...item, quantity: values.quantity }
-                    : item
-                )
-              );
-              message.success('已更新现有记录');
-            } else {
-              // 新增记录
-              const newRecord: PNEntryData = {
-                key: generateKey(),
-                pn: values.pn,
-                region: values.region,
-                quantity: values.quantity,
-                salesPerson,
-                isNew: true
-              };
-              setData(prevData => [...prevData, newRecord]);
-              message.success('新增成功');
-            }
-          } else {
-            // 增加模式：累加到现有记录或新增
-            const existingIndex = data.findIndex(item => 
-              item.pn === values.pn && item.region === values.region && item.salesPerson === salesPerson
-            );
-            
-            if (existingIndex >= 0) {
-              // 找到相同记录，累加数量
-              setData(prevData => 
-                prevData.map((item, index) => 
-                  index === existingIndex 
-                    ? { ...item, quantity: item.quantity + values.quantity }
-                    : item
-                )
-              );
-              message.success('数量已累加到现有记录');
-            } else {
-              // 新增记录
-              const newRecord: PNEntryData = {
-                key: generateKey(),
-                pn: values.pn,
-                region: values.region,
-                quantity: values.quantity,
-                salesPerson,
-                isNew: true
-              };
-              setData(prevData => [...prevData, newRecord]);
-              message.success('新增成功');
-            }
-          }
-        }
-      } else {
-        // SKU 模式处理
-        if (editingRecord) {
-          // 编辑现有SKU记录
-          if (values.mode === 'refresh') {
-            setSkuData(prevData => 
-              prevData.map(item => 
-                item.key === editingRecord.key 
-                  ? { ...item, sku: values.sku, region: values.region, quantity: values.quantity, salesPerson }
-                  : item
-              )
-            );
-            message.success('更新成功');
-          } else {
-            // 增加到现有记录
-            setSkuData(prevData => 
-              prevData.map(item => 
-                item.key === editingRecord.key 
-                  ? { ...item, quantity: item.quantity + values.quantity }
-                  : item
-              )
-            );
-            message.success('数量已增加');
-          }
-        } else {
-          // 新增SKU记录
-          if (values.mode === 'refresh') {
-            // 刷新模式：直接新增或替换
-            const existingIndex = skuData.findIndex(item => 
-              item.sku === values.sku && item.region === values.region && item.salesPerson === salesPerson
-            );
-            
-            if (existingIndex >= 0) {
-              // 找到相同SKU、区域、Sales的记录，替换数量
-              setSkuData(prevData => 
-                prevData.map((item, index) => 
-                  index === existingIndex 
-                    ? { ...item, quantity: values.quantity }
-                    : item
-                )
-              );
-              message.success('已更新现有记录');
-            } else {
-              // 新增记录
-              const newRecord: SKUEntryData = {
-                key: generateKey(),
-                sku: values.sku,
-                region: values.region,
-                quantity: values.quantity,
-                salesPerson,
-                isNew: true
-              };
-              setSkuData(prevData => [...prevData, newRecord]);
-              message.success('新增成功');
-            }
-          } else {
-            // 增加模式：累加到现有记录或新增
-            const existingIndex = skuData.findIndex(item => 
-              item.sku === values.sku && item.region === values.region && item.salesPerson === salesPerson
-            );
-            
-            if (existingIndex >= 0) {
-              // 找到相同记录，累加数量
-              setSkuData(prevData => 
-                prevData.map((item, index) => 
-                  index === existingIndex 
-                    ? { ...item, quantity: item.quantity + values.quantity }
-                    : item
-                )
-              );
-              message.success('数量已累加到现有记录');
-            } else {
-              // 新增记录
-              const newRecord: SKUEntryData = {
-                key: generateKey(),
-                sku: values.sku,
-                region: values.region,
-                quantity: values.quantity,
-                salesPerson,
-                isNew: true
-              };
-              setSkuData(prevData => [...prevData, newRecord]);
-              message.success('新增成功');
-            }
-          }
-        }
-      }
-      
-      setModalVisible(false);
-      form.resetFields();
-    } catch (error) {
-      console.error('表单验证失败:', error);
-    }
-  }, [editingRecord, form]);
-
-  const handleContinueAdd = useCallback(async () => {
-    try {
-      const values = await form.validateFields();
-      const salesPerson = getSalesPersonByRegion(values.region);
-      
-      if (editingRecord) {
-        if (values.mode === 'refresh') {
-          setData(prevData => 
-            prevData.map(item => 
-              item.key === editingRecord.key 
-                ? { ...item, pn: values.pn, region: values.region, quantity: values.quantity, salesPerson }
-                : item
-            )
-          );
-          message.success('更新成功');
-        } else {
-          // 增加到现有记录
-          setData(prevData => 
-            prevData.map(item => 
-              item.key === editingRecord.key 
-                ? { ...item, quantity: item.quantity + values.quantity }
-                : item
-            )
-          );
-          message.success('数量已增加');
-        }
-      } else {
-        // 新增记录
-        if (values.mode === 'refresh') {
-          // 刷新模式：直接新增或替换
-          const existingIndex = data.findIndex(item => 
-            item.pn === values.pn && item.region === values.region && item.salesPerson === salesPerson
-          );
-          
-          if (existingIndex >= 0) {
-            // 找到相同PN、区域、Sales的记录，替换数量
-            setData(prevData => 
-              prevData.map((item, index) => 
-                index === existingIndex 
-                  ? { ...item, quantity: values.quantity }
-                  : item
-              )
-            );
-            message.success('已更新现有记录');
-          } else {
-            // 新增记录
-            const newRecord: PNEntryData = {
-              key: generateKey(),
-              pn: values.pn,
-              region: values.region,
-              quantity: values.quantity,
-              salesPerson,
-              isNew: true
-            };
-            setData(prevData => [...prevData, newRecord]);
-            message.success('新增成功');
-          }
-        } else {
-          // 增加模式：累加到现有记录或新增
-          const existingIndex = data.findIndex(item => 
-            item.pn === values.pn && item.region === values.region && item.salesPerson === salesPerson
-          );
-          
-          if (existingIndex >= 0) {
-            // 找到相同记录，累加数量
-            setData(prevData => 
-              prevData.map((item, index) => 
-                index === existingIndex 
-                  ? { ...item, quantity: item.quantity + values.quantity }
-                  : item
-              )
-            );
-            message.success('数量已累加到现有记录');
-          } else {
-            // 新增记录
-            const newRecord: PNEntryData = {
-              key: generateKey(),
-              pn: values.pn,
-              region: values.region,
-              quantity: values.quantity,
-              salesPerson,
-              isNew: true
-            };
-            setData(prevData => [...prevData, newRecord]);
-            message.success('新增成功');
-          }
-        }
-      }
-      
-      // 重置表单但保持模态框开启
-      form.resetFields();
-      form.setFieldsValue({
-        mode: 'refresh'
-      });
-    } catch (error) {
-      console.error('表单验证失败:', error);
-    }
-  }, [editingRecord, form]);
-
-  const handleModalCancel = useCallback(() => {
-    setModalVisible(false);
-    setEditingRecord(null);
-    form.resetFields();
-  }, [form]);
-
-  const handleImport = useCallback(() => {
-    setImportModalVisible(true);
-    setImportFileList([]);
-  }, []);
-
-  const handleExport = useCallback(() => {
-    // 初始化导出字段
-    const defaultFields = viewMode === 'PN' 
-      ? ['pn', 'region', 'salesPerson', 'quantity']
-      : ['sku', 'region', 'salesPerson', 'quantity'];
-    setExportFields(defaultFields);
-    setExportModalVisible(true);
-  }, [viewMode]);
-
-  const handleFileUpload = useCallback((file: any) => {
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      try {
-        setImporting(true);
-        // 模拟Excel解析过程
-        setTimeout(() => {
-          // 这里应该使用实际的Excel解析库如xlsx
-          // 现在模拟导入数据
-          let mockImportData: (PNEntryData | SKUEntryData)[];
-          
-          if (viewMode === 'PN') {
-            mockImportData = [
-              {
-                key: generateKey(),
-                pn: 'A9999',
-                region: '华南区',
-                salesPerson: 'rory',
-                quantity: 5000,
-                isNew: true
-              },
-              {
-                key: generateKey(),
-                pn: 'A8888',
-                region: '华南区',
-                salesPerson: 'rory',
-                quantity: 3000,
-                isNew: true
-              }
-            ] as PNEntryData[];
-          } else {
-            mockImportData = [
-              {
-                key: generateKey(),
-                sku: 'A9999-BK-US',
-                region: '华南区',
-                salesPerson: 'rory',
-                quantity: 5000,
-                isNew: true
-              },
-              {
-                key: generateKey(),
-                sku: 'A8888-WH-EU',
-                region: '华南区',
-                salesPerson: 'rory',
-                quantity: 3000,
-                isNew: true
-              }
-            ] as SKUEntryData[];
-          }
-          
-          if (viewMode === 'PN') {
-            setData(prevData => [...prevData, ...(mockImportData as PNEntryData[])]);
-          } else {
-            setSkuData(prevData => [...prevData, ...(mockImportData as SKUEntryData[])]);
-          }
-          
-          message.success(`成功导入 ${mockImportData.length} 条${viewMode}数据`);
-          setImporting(false);
-          setImportModalVisible(false);
-        }, 2000);
-      } catch (error) {
-        message.error('文件解析失败，请检查文件格式');
-        setImporting(false);
-      }
-    };
-    reader.readAsArrayBuffer(file);
-    return false; // 阻止自动上传
-  }, [viewMode]);
-
-  const handleExportConfirm = useCallback(() => {
-    setExporting(true);
-    
-    // 模拟导出过程
-    setTimeout(() => {
-      const currentData = getCurrentData();
-      const exportData = currentData.map(item => {
-        const row: any = {};
-        exportFields.forEach(field => {
-          if (field in item) {
-            row[field] = (item as any)[field];
-          }
-        });
-        return row;
-      });
-      
-      // 生成CSV数据
-      const headers = exportFields.map(field => getFieldLabel(field));
-      const csvRows = [headers.join(',')];
-      
-      exportData.forEach(item => {
-        const row = exportFields.map(field => {
-          const value = item[field] || '';
-          return `"${value}"`;
-        });
-        csvRows.push(row.join(','));
-      });
-      
-      const csvContent = csvRows.join('\n');
-      const dataBlob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-      const url = URL.createObjectURL(dataBlob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = `${viewMode}数据导出_${new Date().toISOString().split('T')[0]}.csv`;
-      link.click();
-      URL.revokeObjectURL(url);
-      
-      message.success(`成功导出 ${exportData.length} 条${viewMode}数据`);
-      setExporting(false);
-      setExportModalVisible(false);
-    }, 1000);
-  }, [getCurrentData, exportFields, viewMode]);
-
-  const getExportFieldOptions = () => {
-    if (viewMode === 'PN') {
-      return [
-        { label: 'PN编号', value: 'pn' },
-        { label: '区域', value: 'region' },
-        { label: 'Sales', value: 'salesPerson' },
-        { label: '预测数量', value: 'quantity' }
-      ];
-    } else {
-      return [
-        { label: 'SKU编号', value: 'sku' },
-        { label: '区域', value: 'region' },
-        { label: 'Sales', value: 'salesPerson' },
-        { label: '预测数量', value: 'quantity' }
-      ];
-    }
-  };
-
-  const getFieldLabel = (field: string) => {
-    const fieldMap: Record<string, string> = {
-      pn: 'PN编号',
-      sku: 'SKU编号',
-      region: '区域',
-      salesPerson: 'Sales',
-      quantity: '预测数量'
-    };
-    return fieldMap[field] || field;
-  };
-
-  const generateTargetData = () => {
-    const targetList: (PNEntryData | SKUEntryData)[] = [];
-    
-    for (let i = 1100; i <= 1150; i++) {
-      if (viewMode === 'PN') {
-        targetList.push({
-          key: `target-${i}`,
-          pn: `A${i}`,
-          region: DEFAULT_REGION,
-          salesPerson: DEFAULT_SALES_PERSON,
-          quantity: 0,
-          isNew: false
-        } as PNEntryData);
-      } else {
-        targetList.push({
-          key: `target-${i}`,
-          sku: `A${i}-BK-US`,
-          region: DEFAULT_REGION,
-          salesPerson: DEFAULT_SALES_PERSON,
-          quantity: 0,
-          isNew: false
-        } as SKUEntryData);
-      }
+  // 处理可编辑字段的变更（防抖优化）
+  const handleEditableFieldChange = useCallback((key: string, field: string, value: number | string) => {
+    // 清除之前的定时器
+    if (debounceTimer.current) {
+      clearTimeout(debounceTimer.current);
     }
     
-    return targetList;
-  };
-
-  const handleTargetFilling = useCallback(() => {
-    const generatedData = generateTargetData();
-    setTargetData(generatedData);
-    setTargetModalVisible(true);
-  }, [viewMode]);
-
-  const handleTargetConfirm = useCallback(() => {
-    const validTargetData = targetData.filter(item => item.quantity > 0);
-    
-    if (viewMode === 'PN') {
-      setData(prevData => {
-        const newData = [...prevData];
-        (validTargetData as PNEntryData[]).forEach(targetItem => {
-          const existingIndex = newData.findIndex(item => 
-            item.pn === targetItem.pn && item.region === targetItem.region && item.salesPerson === targetItem.salesPerson
-          );
-          if (existingIndex >= 0) {
-            newData[existingIndex] = { ...newData[existingIndex], quantity: targetItem.quantity };
-          } else {
-            newData.push({ ...targetItem, key: generateKey(), isNew: true });
-          }
-        });
-        return newData;
-      });
-    } else {
-      setSkuData(prevData => {
-        const newData = [...prevData];
-        (validTargetData as SKUEntryData[]).forEach(targetItem => {
-          const existingIndex = newData.findIndex(item => 
-            item.sku === targetItem.sku && item.region === targetItem.region && item.salesPerson === targetItem.salesPerson
-          );
-          if (existingIndex >= 0) {
-            newData[existingIndex] = { ...newData[existingIndex], quantity: targetItem.quantity };
-          } else {
-            newData.push({ ...targetItem, key: generateKey(), isNew: true });
-          }
-        });
-        return newData;
-      });
-    }
-    
-    message.success(`已确认${validTargetData.length}个目标${viewMode}的填写数据`);
-    setTargetModalVisible(false);
-  }, [targetData, viewMode]);
-
-  const handleTargetQuantityChange = useCallback((key: string, value: number) => {
-    setTargetData(prevData => 
+    // 立即更新UI显示
+    setData(prevData => 
       prevData.map(item => 
         item.key === key 
-          ? { ...item, quantity: value }
+          ? { ...item, [field]: value }
           : item
       )
     );
+    
+    // 防抖处理，200ms后执行实际的数据处理
+    debounceTimer.current = setTimeout(() => {
+      // 这里可以添加保存到后端的逻辑
+      console.log(`Field ${field} updated to ${value} for record ${key}`);
+    }, 200);
   }, []);
 
-  const getColumns = (): ColumnsType<any> => [
+  const getSkuStatusColor = (status: string) => {
+    const statusMap = {
+      'active': 'success',
+      'inactive': 'default',
+      'eol': 'error',
+      'new': 'processing'
+    };
+    return statusMap[status as keyof typeof statusMap] || 'default';
+  };
+
+  const getSkuStatusText = (status: string) => {
+    const statusMap = {
+      'active': '在售',
+      'inactive': '停售',
+      'eol': 'EOL',
+      'new': '新品'
+    };
+    return statusMap[status as keyof typeof statusMap] || status;
+  };
+
+  const formatNumber = (num: number) => {
+    return num.toLocaleString();
+  };
+
+  const formatPrice = (price: number) => {
+    return `$${price.toFixed(2)}`;
+  };
+
+  const allColumns = useMemo((): ColumnsType<ForecastEntryData> => [
     {
-      title: viewMode,
-      dataIndex: viewMode === 'PN' ? 'pn' : 'sku',
-      key: viewMode === 'PN' ? 'pn' : 'sku',
-      width: 120,
-      render: (text: string, record: any) => (
-        <Text 
-          strong 
-          style={{ 
-            fontSize: '13px',
-            color: record.isNew ? '#52c41a' : '#1890ff',
-            fontWeight: 'bold',
-            background: record.isNew ? 'linear-gradient(90deg, #f6ffed, #f0f9ff)' : 'linear-gradient(90deg, #e6f7ff, #f0f9ff)',
-            padding: '3px 6px',
-            borderRadius: '4px',
-            border: record.isNew ? '1px solid #95de64' : '1px solid #91d5ff'
-          }}
-        >
-          {text}
-          {record.isNew && <Tag color="green" style={{ marginLeft: 4, fontSize: '10px' }}>新增</Tag>}
-        </Text>
-      ),
-    },
-    {
-      title: '区域',
-      dataIndex: 'region',
-      key: 'region',
-      width: 100,
-      render: (text: string) => <Tag color="blue" style={{ fontSize: '12px' }}>{text}</Tag>
-    },
-    {
-      title: 'Sales',
-      dataIndex: 'salesPerson',
-      key: 'salesPerson',
-      width: 120,
+      title: '渠道',
+      dataIndex: 'channel',
+      key: 'channel',
+      width: 80,
+      fixed: 'left',
       render: (text: string) => (
-        <Space size={4}>
-          <Avatar size={24} style={{ backgroundColor: '#1890ff' }}>
-            {text.charAt(0)}
-          </Avatar>
-          <Text style={{ fontSize: '13px' }}>{text}</Text>
-        </Space>
+        <Tag color="blue" style={{ fontSize: '10px' }}>{text}</Tag>
       )
     },
     {
-      title: '预测数量',
-      dataIndex: 'quantity',
-      key: 'quantity',
-      width: 150,
-      render: (val: number, record: PNEntryData) => (
+      title: 'SKU',
+      dataIndex: 'sku',
+      key: 'sku',
+      width: 120,
+      fixed: 'left',
+      render: (text: string, record: ForecastEntryData) => (
+        <Text 
+          code 
+          style={{ 
+            fontSize: '11px',
+            color: record.isNew ? '#52c41a' : '#1890ff',
+            background: record.isNew ? '#f6ffed' : '#e6f7ff',
+            padding: '2px 4px',
+            borderRadius: '3px'
+          }}
+        >
+          {text}
+          {record.isNew && <Tag color="green" size="small" style={{ marginLeft: 2, fontSize: '8px' }}>新</Tag>}
+        </Text>
+      )
+    },
+    {
+      title: 'PDT',
+      dataIndex: 'pdt',
+      key: 'pdt',
+      width: 80,
+      render: (text: string) => (
+        <Text strong style={{ color: '#1890ff', fontSize: '11px' }}>{text}</Text>
+      )
+    },
+    {
+      title: '奇点细分',
+      dataIndex: 'singularity',
+      key: 'singularity',
+      width: 100,
+      render: (text: string) => (
+        <Tag color="cyan" style={{ fontSize: '10px' }}>{text}</Tag>
+      )
+    },
+    {
+      title: 'PN',
+      dataIndex: 'pn',
+      key: 'pn',
+      width: 80,
+      render: (text: string) => (
+        <Text strong style={{ fontSize: '11px', color: '#722ed1' }}>{text}</Text>
+      )
+    },
+    {
+      title: 'CN品类',
+      dataIndex: 'cnCategory',
+      key: 'cnCategory',
+      width: 80,
+      render: (text: string) => (
+        <Tag color="orange" style={{ fontSize: '10px' }}>{text}</Tag>
+      )
+    },
+    {
+      title: 'SKU名称',
+      dataIndex: 'skuName',
+      key: 'skuName',
+      width: 180,
+      render: (text: string) => (
+        <Tooltip title={text}>
+          <Text style={{ fontSize: '11px' }} ellipsis>{text}</Text>
+        </Tooltip>
+      )
+    },
+    {
+      title: 'SKU状态',
+      dataIndex: 'skuStatus',
+      key: 'skuStatus',
+      width: 80,
+      render: (status: string) => (
+        <Tag color={getSkuStatusColor(status)} style={{ fontSize: '10px' }}>
+          {getSkuStatusText(status)}
+        </Tag>
+      )
+    },
+    {
+      title: '25年1月销量',
+      dataIndex: 'jan2025Sales',
+      key: 'jan2025Sales',
+      width: 90,
+      render: (value: number) => (
+        <Text strong style={{ fontSize: '11px', color: '#333', fontWeight: 600 }}>{formatNumber(value)}</Text>
+      )
+    },
+    {
+      title: '25年2月销量',
+      dataIndex: 'feb2025Sales',
+      key: 'feb2025Sales',
+      width: 90,
+      render: (value: number) => (
+        <Text strong style={{ fontSize: '11px', color: '#333', fontWeight: 600 }}>{formatNumber(value)}</Text>
+      )
+    },
+    {
+      title: '25年3月销量',
+      dataIndex: 'mar2025Sales',
+      key: 'mar2025Sales',
+      width: 90,
+      render: (value: number) => (
+        <Text strong style={{ fontSize: '11px', color: '#333', fontWeight: 600 }}>{formatNumber(value)}</Text>
+      )
+    },
+    {
+      title: '25年4月销量',
+      dataIndex: 'apr2025Sales',
+      key: 'apr2025Sales',
+      width: 90,
+      render: (value: number) => (
+        <Text strong style={{ fontSize: '11px', color: '#333', fontWeight: 600 }}>{formatNumber(value)}</Text>
+      )
+    },
+    {
+      title: '25年5月销量',
+      dataIndex: 'may2025Sales',
+      key: 'may2025Sales',
+      width: 90,
+      render: (value: number) => (
+        <Text strong style={{ fontSize: '11px', color: '#333', fontWeight: 600 }}>{formatNumber(value)}</Text>
+      )
+    },
+    {
+      title: '25年6月销量',
+      dataIndex: 'jun2025Sales',
+      key: 'jun2025Sales',
+      width: 90,
+      render: (value: number) => (
+        <Text strong style={{ fontSize: '11px', color: '#333', fontWeight: 600 }}>{formatNumber(value)}</Text>
+      )
+    },
+    {
+      title: '25年7月销量',
+      dataIndex: 'jul2025Sales',
+      key: 'jul2025Sales',
+      width: 90,
+      render: (value: number) => (
+        <Text strong style={{ fontSize: '11px', color: '#333', fontWeight: 600 }}>{formatNumber(value)}</Text>
+      )
+    },
+    {
+      title: '25年8月销量',
+      dataIndex: 'aug2025Sales',
+      key: 'aug2025Sales',
+      width: 90,
+      render: (value: number) => (
+        <Text strong style={{ fontSize: '11px', color: '#333', fontWeight: 600 }}>{formatNumber(value)}</Text>
+      )
+    },
+    {
+      title: '成交均价(未税)',
+      dataIndex: 'avgPrice',
+      key: 'avgPrice',
+      width: 110,
+      render: (value: number) => (
+        <Text strong style={{ fontSize: '11px', color: '#333', fontWeight: 600 }}>{formatPrice(value)}</Text>
+      )
+    },
+    {
+      title: 'Q3规划合计',
+      dataIndex: 'q3PlanTotal',
+      key: 'q3PlanTotal',
+      width: 100,
+      render: (value: number) => (
+        <Text strong style={{ fontSize: '11px', color: '#722ed1', fontWeight: 600 }}>{formatNumber(value)}</Text>
+      )
+    },
+    {
+      title: '当前销量',
+      dataIndex: 'currentSales',
+      key: 'currentSales',
+      width: 90,
+      render: (value: number) => (
+        <Text strong style={{ fontSize: '11px', color: '#333', fontWeight: 600 }}>{formatNumber(value)}</Text>
+      )
+    },
+    {
+      title: '时间进度',
+      dataIndex: 'timeProgress',
+      key: 'timeProgress',
+      width: 90,
+      render: (value: number) => (
+        <Text strong style={{ fontSize: '11px', color: '#333', fontWeight: 600 }}>{value}%</Text>
+      )
+    },
+    {
+      title: 'VS时间进度',
+      dataIndex: 'vsTimeProgress',
+      key: 'vsTimeProgress',
+      width: 100,
+      render: (value: number) => (
+        <Text strong style={{ 
+          fontSize: '11px', 
+          color: value >= 0 ? '#52c41a' : '#f5222d',
+          fontWeight: 600
+        }}>
+          {value >= 0 ? '+' : ''}{value}%
+        </Text>
+      )
+    },
+    {
+      title: '库存',
+      dataIndex: 'inventory',
+      key: 'inventory',
+      width: 80,
+      render: (value: number) => (
+        <Text strong style={{ fontSize: '11px', color: '#333', fontWeight: 600 }}>{formatNumber(value)}</Text>
+      )
+    },
+    {
+      title: 'Q3总计',
+      dataIndex: 'q3Total',
+      key: 'q3Total',
+      width: 90,
+      render: (value: number) => (
+        <Text strong style={{ fontSize: '11px', color: '#722ed1', fontWeight: 600 }}>{formatNumber(value)}</Text>
+      )
+    },
+    // 可编辑的预测字段
+    {
+      title: '8月预测',
+      dataIndex: 'augForecast',
+      key: 'augForecast',
+      width: 90,
+      render: (value: number, record: ForecastEntryData) => (
         <InputNumber
           size="small"
-          value={val}
-          style={{ width: '100%' }}
-          onChange={(value) => handleQuantityChange(record.key, value || 0)}
-          formatter={(value) => `${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
-          parser={(value) => parseInt(value!.replace(/\$\s?|(,*)/g, '')) || 0}
+          value={value}
+          style={{ 
+            width: '100%',
+            borderRadius: '6px',
+            borderColor: '#d9d9d9',
+            transition: 'all 0.2s'
+          }}
+          className="editable-input"
+          controls={false}
+          onChange={(newValue) => handleEditableFieldChange(record.key, 'augForecast', newValue || 0)}
+          formatter={(val) => `${val}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
+          parser={(val) => parseInt(val!.replace(/\$\s?|(,*)/g, '')) || 0}
           min={0}
         />
       )
     },
     {
-      title: '操作',
-      key: 'action',
-      width: 120,
-      render: (_, record: PNEntryData) => (
-        <Space size={2}>
-          <Tooltip title="编辑">
-            <Button 
-              type="link" 
-              size="small"
-              icon={<EditOutlined />}
-              onClick={() => handleEdit(record)}
-            />
-          </Tooltip>
-          <Tooltip title="删除">
-            <Button 
-              type="link" 
-              size="small"
-              icon={<DeleteOutlined />}
-              danger
-              onClick={() => handleDelete(record.key)}
-            />
-          </Tooltip>
-        </Space>
+      title: '9月预测',
+      dataIndex: 'sepForecast',
+      key: 'sepForecast',
+      width: 90,
+      render: (value: number, record: ForecastEntryData) => (
+        <InputNumber
+          size="small"
+          value={value}
+          style={{ 
+            width: '100%',
+            borderRadius: '6px',
+            borderColor: '#d9d9d9',
+            transition: 'all 0.2s'
+          }}
+          className="editable-input"
+          controls={false}
+          onChange={(newValue) => handleEditableFieldChange(record.key, 'sepForecast', newValue || 0)}
+          formatter={(val) => `${val}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
+          parser={(val) => parseInt(val!.replace(/\$\s?|(,*)/g, '')) || 0}
+          min={0}
+        />
+      )
+    },
+    {
+      title: '10月预测',
+      dataIndex: 'octForecast',
+      key: 'octForecast',
+      width: 90,
+      render: (value: number, record: ForecastEntryData) => (
+        <InputNumber
+          size="small"
+          value={value}
+          style={{ 
+            width: '100%',
+            borderRadius: '6px',
+            borderColor: '#d9d9d9',
+            transition: 'all 0.2s'
+          }}
+          className="editable-input"
+          controls={false}
+          onChange={(newValue) => handleEditableFieldChange(record.key, 'octForecast', newValue || 0)}
+          formatter={(val) => `${val}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
+          parser={(val) => parseInt(val!.replace(/\$\s?|(,*)/g, '')) || 0}
+          min={0}
+        />
+      )
+    },
+    {
+      title: '11月预测',
+      dataIndex: 'novForecast',
+      key: 'novForecast',
+      width: 90,
+      render: (value: number, record: ForecastEntryData) => (
+        <InputNumber
+          size="small"
+          value={value}
+          style={{ 
+            width: '100%',
+            borderRadius: '6px',
+            borderColor: '#d9d9d9',
+            transition: 'all 0.2s'
+          }}
+          className="editable-input"
+          controls={false}
+          onChange={(newValue) => handleEditableFieldChange(record.key, 'novForecast', newValue || 0)}
+          formatter={(val) => `${val}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
+          parser={(val) => parseInt(val!.replace(/\$\s?|(,*)/g, '')) || 0}
+          min={0}
+        />
+      )
+    },
+    {
+      title: '12月预测',
+      dataIndex: 'decForecast',
+      key: 'decForecast',
+      width: 90,
+      render: (value: number, record: ForecastEntryData) => (
+        <InputNumber
+          size="small"
+          value={value}
+          style={{ 
+            width: '100%',
+            borderRadius: '6px',
+            borderColor: '#d9d9d9',
+            transition: 'all 0.2s'
+          }}
+          className="editable-input"
+          controls={false}
+          onChange={(newValue) => handleEditableFieldChange(record.key, 'decForecast', newValue || 0)}
+          formatter={(val) => `${val}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
+          parser={(val) => parseInt(val!.replace(/\$\s?|(,*)/g, '')) || 0}
+          min={0}
+        />
+      )
+    },
+    {
+      title: '8月（修正）',
+      dataIndex: 'aug2Corrected',
+      key: 'aug2Corrected',
+      width: 90,
+      render: (value: number) => (
+        <Text strong style={{ fontSize: '11px', color: '#333', fontWeight: 600 }}>
+          {formatNumber(value)}
+        </Text>
+      )
+    },
+    {
+      title: '9月（修正）',
+      dataIndex: 'sep2Corrected',
+      key: 'sep2Corrected',
+      width: 90,
+      render: (value: number) => (
+        <Text strong style={{ fontSize: '11px', color: '#333', fontWeight: 600 }}>
+          {formatNumber(value)}
+        </Text>
+      )
+    },
+    {
+      title: '10月（修正）',
+      dataIndex: 'oct2Corrected',
+      key: 'oct2Corrected',
+      width: 90,
+      render: (value: number) => (
+        <Text strong style={{ fontSize: '11px', color: '#333', fontWeight: 600 }}>
+          {formatNumber(value)}
+        </Text>
+      )
+    },
+    {
+      title: '11月（修正）',
+      dataIndex: 'nov2Corrected',
+      key: 'nov2Corrected',
+      width: 90,
+      render: (value: number) => (
+        <Text strong style={{ fontSize: '11px', color: '#333', fontWeight: 600 }}>
+          {formatNumber(value)}
+        </Text>
+      )
+    },
+    {
+      title: '12月（修正）',
+      dataIndex: 'dec2Corrected',
+      key: 'dec2Corrected',
+      width: 90,
+      render: (value: number) => (
+        <Text strong style={{ fontSize: '11px', color: '#333', fontWeight: 600 }}>
+          {formatNumber(value)}
+        </Text>
       )
     }
-  ];
+  ], [handleEditableFieldChange, formatNumber]);
 
-  const totalQuantity = getCurrentData().reduce((sum, item) => sum + item.quantity, 0);
-  const newItemsCount = getCurrentData().filter(item => item.isNew).length;
+  // 根据可见列筛选columns
+  const columns = useMemo(() => {
+    return allColumns.filter(col => visibleColumns.has(col.key as string));
+  }, [allColumns, visibleColumns]);
+
+  // 列分组定义
+  const columnGroups = useMemo(() => ({
+    basic: ['channel', 'sku', 'pdt', 'singularity', 'pn', 'cnCategory', 'skuName', 'skuStatus'],
+    sales: ['jan2025Sales', 'feb2025Sales', 'mar2025Sales', 'apr2025Sales', 'may2025Sales', 'jun2025Sales', 'jul2025Sales', 'aug2025Sales'],
+    summary: ['avgPrice', 'q3PlanTotal', 'currentSales', 'timeProgress', 'vsTimeProgress', 'inventory', 'q3Total'],
+    forecast: ['augForecast', 'sepForecast', 'octForecast', 'novForecast', 'decForecast'],
+    corrected: ['aug2Corrected', 'sep2Corrected', 'oct2Corrected', 'nov2Corrected', 'dec2Corrected']
+  }), []);
+
+  const handleSaveAll = () => {
+    message.success('所有预测数据已保存！');
+  };
+
+  const handleExport = () => {
+    message.info('正在导出预测收集数据...');
+  };
+
+  // 计算统计数据
+  const statisticsData = useMemo(() => {
+    const totalQ3Plan = filteredData.reduce((sum, item) => sum + item.q3PlanTotal, 0);
+    const totalCurrentSales = filteredData.reduce((sum, item) => sum + item.currentSales, 0);
+    const avgTimeProgress = filteredData.length > 0 
+      ? filteredData.reduce((sum, item) => sum + item.timeProgress, 0) / filteredData.length 
+      : 0;
+    return { totalQ3Plan, totalCurrentSales, avgTimeProgress };
+  }, [filteredData]);
 
   return (
     <div style={{ 
@@ -818,59 +668,38 @@ const PNFastEntry: React.FC = () => {
         <Row justify="space-between" align="middle">
           <Col>
             <Title level={3} style={{ margin: 0, color: '#262626' }}>
-              ⚡ {viewMode}快速填写
+              📊 预测收集
             </Title>
-            <Text type="secondary">销售预测数据快速录入与管理</Text>
+            <Text type="secondary">Sales预测数据填写 - 只需填写可编辑字段</Text>
           </Col>
           <Col>
             <Space>
-              <Tooltip title={`切换到${viewMode === 'PN' ? 'SKU' : 'PN'}维度`}>
-                <Button 
-                  icon={<SwapOutlined />}
-                  onClick={() => setViewMode(viewMode === 'PN' ? 'SKU' : 'PN')}
-                  style={{ borderRadius: '6px' }}
-                >
-                  {viewMode === 'PN' ? 'SKU' : 'PN'}维度
-                </Button>
-              </Tooltip>
-              
-              <Tooltip title="导入Excel数据">
-                <Button 
-                  icon={<ImportOutlined />}
-                  onClick={handleImport}
-                  style={{ borderRadius: '6px' }}
-                >
-                  导入
-                </Button>
-              </Tooltip>
-              
-              <Tooltip title="导出数据">
-                <Button 
-                  icon={<ExportOutlined />}
-                  onClick={handleExport}
-                  style={{ borderRadius: '6px' }}
-                >
-                  导出
-                </Button>
-              </Tooltip>
-              
-              <Tooltip title={`目标${viewMode}填写`}>
-                <Button 
-                  icon={<BulbOutlined />}
-                  onClick={handleTargetFilling}
-                  style={{ borderRadius: '6px' }}
-                >
-                  目标填写
-                </Button>
-              </Tooltip>
-              
               <Button 
-                type="primary"
-                icon={<PlusOutlined />} 
-                onClick={handleAddNew}
+                icon={<ImportOutlined />}
                 style={{ borderRadius: '6px' }}
               >
-                新增填写
+                导入
+              </Button>
+              <Button 
+                icon={<ExportOutlined />}
+                onClick={handleExport}
+                style={{ borderRadius: '6px' }}
+              >
+                导出
+              </Button>
+              <Button 
+                icon={<SettingOutlined />}
+                onClick={() => setColumnSettingsOpen(true)}
+                style={{ borderRadius: '6px' }}
+              >
+                列设置
+              </Button>
+              <Button 
+                type="primary"
+                onClick={handleSaveAll}
+                style={{ borderRadius: '6px' }}
+              >
+                保存所有预测
               </Button>
             </Space>
           </Col>
@@ -879,41 +708,32 @@ const PNFastEntry: React.FC = () => {
 
       {/* 统计卡片 */}
       <Row gutter={[16, 16]} style={{ marginBottom: 16 }}>
-        <Col xs={12} sm={6}>
+        <Col xs={24} sm={8}>
           <Card size="small" style={{ textAlign: 'center' }}>
             <Statistic
-              title={`总${viewMode}数量`}
-              value={getCurrentData().length}
-              suffix="个"
+              title="Q3规划总计"
+              value={statisticsData.totalQ3Plan}
               valueStyle={{ color: '#1890ff', fontSize: '18px' }}
             />
           </Card>
         </Col>
-        <Col xs={12} sm={6}>
+        <Col xs={24} sm={8}>
           <Card size="small" style={{ textAlign: 'center' }}>
             <Statistic
-              title="新增项目"
-              value={newItemsCount}
-              suffix="个"
+              title="当前销量总计"
+              value={statisticsData.totalCurrentSales}
               valueStyle={{ color: '#52c41a', fontSize: '18px' }}
             />
           </Card>
         </Col>
-        <Col xs={12} sm={6}>
+        <Col xs={24} sm={8}>
           <Card size="small" style={{ textAlign: 'center' }}>
             <Statistic
-              title="预测总量"
-              value={totalQuantity}
+              title="平均时间进度"
+              value={statisticsData.avgTimeProgress}
+              precision={1}
+              suffix="%"
               valueStyle={{ color: '#722ed1', fontSize: '18px' }}
-            />
-          </Card>
-        </Col>
-        <Col xs={12} sm={6}>
-          <Card size="small" style={{ textAlign: 'center' }}>
-            <Statistic
-              title="平均数量"
-              value={data.length > 0 ? Math.round(totalQuantity / data.length) : 0}
-              valueStyle={{ color: '#fa8c16', fontSize: '18px' }}
             />
           </Card>
         </Col>
@@ -929,6 +749,7 @@ const PNFastEntry: React.FC = () => {
                   onChange={setSelectedRegion}
                   style={{ width: 120 }}
                   size="small"
+                  placeholder="选择区域"
                 >
                   {regions.map(region => (
                     <Option key={region} value={region}>{region}</Option>
@@ -939,6 +760,7 @@ const PNFastEntry: React.FC = () => {
                   onChange={setSelectedSales}
                   style={{ width: 120 }}
                   size="small"
+                  placeholder="选择Sales"
                 >
                   {salesPersons.map(person => (
                     <Option key={person} value={person}>{person}</Option>
@@ -948,392 +770,183 @@ const PNFastEntry: React.FC = () => {
             </Col>
             <Col>
               <Text type="secondary" style={{ fontSize: '13px' }}>
-                当前显示 {filteredData.length} 条记录
+                当前显示 {filteredData.length} 条记录 | 预测字段可编辑
               </Text>
             </Col>
           </Row>
         </div>
 
-        {newItemsCount > 0 && (
-          <Alert
-            message={`本次新增了 ${newItemsCount} 个${viewMode}项目`}
-            description="新增的项目已标记为绿色，可以继续编辑或添加"
-            type="success"
-            showIcon
-            closable
-            style={{ marginBottom: 16 }}
-          />
-        )}
 
         <Table
-          columns={getColumns()}
+          columns={columns}
           dataSource={filteredData}
           size="small"
           pagination={{
-            defaultPageSize: 15,
+            defaultPageSize: 100,
             showSizeChanger: true,
             showQuickJumper: true,
             showTotal: (total, range) => `显示 ${range[0]}-${range[1]} 条，共 ${total} 条`,
-            pageSizeOptions: ['10', '15', '30'],
+            pageSizeOptions: ['100', '200', '500'],
           }}
-          scroll={{ x: 800 }}
+          scroll={{ x: 2800, y: 600 }}
+          bordered
         />
       </Card>
 
-      {/* 新增/编辑模态框 */}
-      <Modal
-        title={editingRecord ? '编辑PN记录' : '新增PN记录'}
-        open={modalVisible}
-        onCancel={handleModalCancel}
-        width={500}
-        footer={[
-          <Button key="cancel" onClick={handleModalCancel}>
-            取消
-          </Button>,
-          <Button key="continue" onClick={handleContinueAdd}>
-            继续添加
-          </Button>,
-          <Button key="ok" type="primary" onClick={handleModalOk}>
-            确定
-          </Button>
-        ]}
+      {/* 列设置抽屉 */}
+      <Drawer
+        title="列显示设置"
+        placement="right"
+        onClose={() => setColumnSettingsOpen(false)}
+        open={columnSettingsOpen}
+        width={350}
       >
-        <Form
-          form={form}
-          layout="vertical"
-          initialValues={{ 
-            mode: 'refresh',
-            region: DEFAULT_REGION
-          }}
-        >
-          {viewMode === 'PN' ? (
-            <Form.Item
-              label="PN编号"
-              name="pn"
-              rules={[
-                { required: true, message: '请输入PN编号' },
-                { pattern: /^[A-Za-z0-9]+$/, message: 'PN编号只能包含字母和数字' }
-              ]}
-            >
-              <Input 
-                placeholder="请输入PN编号，如A5634" 
-                style={{ textTransform: 'uppercase' }}
-              />
-            </Form.Item>
-          ) : (
-            <Form.Item
-              label="SKU编号"
-              name="sku"
-              rules={[
-                { required: true, message: '请输入SKU编号' },
-                { pattern: /^[A-Za-z0-9\-]+$/, message: 'SKU编号只能包含字母、数字和连字符' }
-              ]}
-            >
-              <Input 
-                placeholder="请输入SKU编号，如A5634-BK-US" 
-                style={{ textTransform: 'uppercase' }}
-              />
-            </Form.Item>
-          )}
-
-          <Form.Item
-            label="区域"
-            name="region"
-            rules={[{ required: true, message: '请选择区域' }]}
-          >
-            <Select placeholder="请选择区域">
-              {regions.slice(1).map(region => (
-                <Option key={region} value={region}>{region}</Option>
+        <Tabs defaultActiveKey="groups">
+          <Tabs.TabPane tab="按分组" key="groups">
+            <Space direction="vertical" style={{ width: '100%' }}>
+              {Object.entries(columnGroups).map(([groupKey, columns]) => (
+                <Card 
+                  key={groupKey} 
+                  size="small" 
+                  title={
+                    <Space>
+                      <Text strong style={{ fontSize: '13px' }}>
+                        {groupKey === 'basic' && '基础信息'}
+                        {groupKey === 'sales' && '销量数据'}
+                        {groupKey === 'summary' && '统计信息'}
+                        {groupKey === 'forecast' && '预测数据'}
+                        {groupKey === 'corrected' && '修正数据'}
+                      </Text>
+                      <Switch
+                        size="small"
+                        checked={columns.every(col => visibleColumns.has(col))}
+                        onChange={(checked) => {
+                          const newVisibleColumns = new Set(visibleColumns);
+                          columns.forEach(col => {
+                            if (checked) {
+                              newVisibleColumns.add(col);
+                            } else {
+                              newVisibleColumns.delete(col);
+                            }
+                          });
+                          setVisibleColumns(newVisibleColumns);
+                        }}
+                      />
+                    </Space>
+                  }
+                >
+                  <Space direction="vertical" size={8} style={{ width: '100%' }}>
+                    {columns.map(columnKey => {
+                      const column = allColumns.find(col => col.key === columnKey);
+                      return column ? (
+                        <div key={columnKey} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <Text style={{ fontSize: '12px' }}>{column.title as string}</Text>
+                          <Switch
+                            size="small"
+                            checked={visibleColumns.has(columnKey)}
+                            onChange={(checked) => {
+                              const newVisibleColumns = new Set(visibleColumns);
+                              if (checked) {
+                                newVisibleColumns.add(columnKey);
+                              } else {
+                                newVisibleColumns.delete(columnKey);
+                              }
+                              setVisibleColumns(newVisibleColumns);
+                            }}
+                          />
+                        </div>
+                      ) : null;
+                    })}
+                  </Space>
+                </Card>
               ))}
-            </Select>
-          </Form.Item>
-
-          <Form.Item
-            label="预测数量"
-            name="quantity"
-            rules={[
-              { required: true, message: '请输入预测数量' },
-              { type: 'number', min: 1, message: '数量必须大于0' }
-            ]}
-          >
-            <InputNumber
-              style={{ width: '100%' }}
-              placeholder="请输入预测数量"
-              formatter={(value) => `${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
-              parser={(value) => parseInt(value!.replace(/\$\s?|(,*)/g, '')) || 0}
-              min={1}
-            />
-          </Form.Item>
-
-          <Form.Item
-            label="操作模式"
-            name="mode"
-            rules={[{ required: true, message: '请选择操作模式' }]}
-          >
-            <Radio.Group>
-              <Radio value="refresh">刷新（替换现有数量）</Radio>
-              <Radio value="add">增加（累加到现有数量）</Radio>
-            </Radio.Group>
-          </Form.Item>
-
-          <Alert
-            message="操作说明"
-            description={
-              <div>
-                {!editingRecord && (
-                  <div>• 新增记录后可以选择"继续添加"来快速录入多个{viewMode}</div>
-                )}
-              </div>
-            }
-            type="info"
-            showIcon
-            style={{ marginTop: 16 }}
-          />
-        </Form>
-      </Modal>
-
-      {/* 导入数据模态框 */}
-      <Modal
-        title={
-          <Space>
-            <UploadOutlined style={{ color: '#1890ff' }} />
-            导入{viewMode}数据
-          </Space>
-        }
-        open={importModalVisible}
-        onCancel={() => setImportModalVisible(false)}
-        footer={[
-          <Button key="cancel" onClick={() => setImportModalVisible(false)}>
-            取消
-          </Button>,
+            </Space>
+          </Tabs.TabPane>
+          <Tabs.TabPane tab="全部列" key="all">
+            <Space direction="vertical" style={{ width: '100%' }}>
+              {allColumns.map(column => (
+                <div key={column.key} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '4px 0' }}>
+                  <Text style={{ fontSize: '12px' }}>{column.title as string}</Text>
+                  <Switch
+                    size="small"
+                    checked={visibleColumns.has(column.key as string)}
+                    onChange={(checked) => {
+                      const newVisibleColumns = new Set(visibleColumns);
+                      if (checked) {
+                        newVisibleColumns.add(column.key as string);
+                      } else {
+                        newVisibleColumns.delete(column.key as string);
+                      }
+                      setVisibleColumns(newVisibleColumns);
+                    }}
+                  />
+                </div>
+              ))}
+            </Space>
+          </Tabs.TabPane>
+        </Tabs>
+        <Divider />
+        <Space>
           <Button 
-            key="import" 
-            type="primary" 
-            loading={importing}
-            disabled={importFileList.length === 0}
+            size="small"
             onClick={() => {
-              if (importFileList.length > 0) {
-                handleFileUpload(importFileList[0].originFileObj);
-              }
+              setVisibleColumns(new Set(Object.values(columnGroups).flat()));
             }}
           >
-            {importing ? '正在导入...' : '开始导入'}
+            全选
           </Button>
-        ]}
-        width={500}
-      >
-        <div style={{ marginBottom: 16 }}>
-          <Alert
-            message="导入说明"
-            description={
-              <div>
-                <div>• 支持Excel文件格式（.xlsx, .xls）</div>
-                <div>• Excel文件应包含列：{viewMode === 'PN' ? 'PN编号' : 'SKU编号'}、区域、预测数量</div>
-                <div>• 系统将自动根据区域匹配对应的Sales人员</div>
-                <div>• 导入的数据将添加到现有数据中</div>
-              </div>
-            }
-            type="info"
-            showIcon
-            style={{ fontSize: '12px' }}
-          />
-        </div>
-        
-        <Upload.Dragger
-          accept=".xlsx,.xls"
-          beforeUpload={handleFileUpload}
-          fileList={importFileList}
-          onChange={({ fileList }) => setImportFileList(fileList)}
-          showUploadList={true}
-          multiple={false}
-          style={{ 
-            padding: '20px',
-            backgroundColor: '#fafafa'
-          }}
-        >
-          <p className="ant-upload-drag-icon">
-            <UploadOutlined style={{ fontSize: '48px', color: '#1890ff' }} />
-          </p>
-          <p className="ant-upload-text">点击或拖拽文件到此区域</p>
-          <p className="ant-upload-hint">
-            支持单个文件上传，仅支持Excel文件格式
-          </p>
-        </Upload.Dragger>
-      </Modal>
-
-      {/* 导出数据模态框 */}
-      <Modal
-        title={
-          <Space>
-            <DownloadOutlined style={{ color: '#52c41a' }} />
-            导出{viewMode}数据
-          </Space>
-        }
-        open={exportModalVisible}
-        onCancel={() => setExportModalVisible(false)}
-        onOk={handleExportConfirm}
-        confirmLoading={exporting}
-        width={500}
-      >
-        <div style={{ marginBottom: 16 }}>
-          <Text strong>选择导出字段：</Text>
-        </div>
-        
-        <Checkbox.Group
-          value={exportFields}
-          onChange={setExportFields}
-          style={{ width: '100%' }}
-        >
-          <Row gutter={[16, 8]}>
-            {getExportFieldOptions().map(option => (
-              <Col span={12} key={option.value}>
-                <Checkbox value={option.value}>{option.label}</Checkbox>
-              </Col>
-            ))}
-          </Row>
-        </Checkbox.Group>
-        
-        <div style={{ marginTop: 16 }}>
-          <Alert
-            message="导出说明"
-            description={
-              <div>
-                <div>• 将按照选中的字段导出Excel文件</div>
-                <div>• 导出数据为当前筛选结果</div>
-                <div>• 共 {getCurrentData().length} 条{viewMode}数据</div>
-              </div>
-            }
-            type="info"
-            showIcon
-            style={{ fontSize: '12px' }}
-          />
-        </div>
-      </Modal>
-
-      {/* 目标填写模态框 */}
-      <Modal
-        title={
-          <Space>
-            <BulbOutlined style={{ color: '#faad14' }} />
-            目标{viewMode}填写 (A1100-A1150)
-          </Space>
-        }
-        open={targetModalVisible}
-        onCancel={() => setTargetModalVisible(false)}
-        width={800}
-        footer={[
-          <Button key="cancel" onClick={() => setTargetModalVisible(false)}>
-            取消
-          </Button>,
           <Button 
-            key="confirm" 
-            type="primary" 
-            onClick={handleTargetConfirm}
-          >
-            确认填入
-          </Button>
-        ]}
-      >
-        <div style={{ marginBottom: 16 }}>
-          <Alert
-            message="目标填写说明"
-            description={
-              <div>
-                <div>• 请在需要的项目中输入目标数量（大于0）</div>
-                <div>• 点击"确认填入"后，有数量的项目将被添加到主表格中</div>
-                <div>• 默认区域：{DEFAULT_REGION}，Sales：{DEFAULT_SALES_PERSON}</div>
-              </div>
-            }
-            type="info"
-            showIcon
-            style={{ fontSize: '12px' }}
-          />
-        </div>
-        
-        <div style={{ maxHeight: '400px', overflow: 'auto' }}>
-          <Table
-            dataSource={targetData}
             size="small"
-            pagination={false}
-            scroll={{ y: 300 }}
-            columns={[
-              {
-                title: viewMode,
-                dataIndex: viewMode === 'PN' ? 'pn' : 'sku',
-                key: viewMode === 'PN' ? 'pn' : 'sku',
-                width: 120,
-                render: (text: string) => (
-                  <Tag color="blue" style={{ fontSize: '13px', fontWeight: 'bold' }}>
-                    {text}
-                  </Tag>
-                )
-              },
-              {
-                title: '区域',
-                dataIndex: 'region',
-                key: 'region',
-                width: 100,
-                render: (text: string) => <Tag color="green">{text}</Tag>
-              },
-              {
-                title: 'Sales',
-                dataIndex: 'salesPerson',
-                key: 'salesPerson',
-                width: 100,
-                render: (text: string) => (
-                  <Space size={4}>
-                    <Avatar size={20} style={{ backgroundColor: '#1890ff' }}>
-                      {text.charAt(0).toUpperCase()}
-                    </Avatar>
-                    <Text style={{ fontSize: '12px' }}>{text}</Text>
-                  </Space>
-                )
-              },
-              {
-                title: '目标数量',
-                dataIndex: 'quantity',
-                key: 'quantity',
-                width: 150,
-                render: (val: number, record: any) => (
-                  <InputNumber
-                    size="small"
-                    value={val}
-                    style={{ width: '100%' }}
-                    onChange={(value) => handleTargetQuantityChange(record.key, value || 0)}
-                    formatter={(value) => `${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
-                    parser={(value) => parseInt(value!.replace(/\$\s?|(,*)/g, '')) || 0}
-                    min={0}
-                    placeholder="输入数量"
-                  />
-                )
-              }
-            ]}
-          />
-        </div>
-        
-        <div style={{ marginTop: 16, textAlign: 'center' }}>
-          <Text type="secondary" style={{ fontSize: '12px' }}>
-            已选择 {targetData.filter(item => item.quantity > 0).length} / {targetData.length} 个项目
-          </Text>
-        </div>
-      </Modal>
+            onClick={() => {
+              setVisibleColumns(new Set(['channel', 'sku', 'pdt', 'pn', 'augForecast', 'sepForecast', 'octForecast', 'novForecast', 'decForecast']));
+            }}
+          >
+            重置
+          </Button>
+        </Space>
+      </Drawer>
 
       <style>{`
         .ant-table-thead > tr > th {
           background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
           font-weight: 600;
           color: #262626;
-          font-size: 12px;
-          padding: 12px 8px;
+          font-size: 11px;
+          padding: 8px 6px;
+          text-align: center;
         }
         .ant-table-tbody > tr > td {
-          padding: 12px 8px;
+          padding: 8px 6px;
+          font-size: 11px;
         }
         .ant-input-number {
-          border-radius: 4px;
+          border-radius: 6px;
+        }
+        .ant-input {
+          border-radius: 6px;
         }
         .ant-btn {
-          border-radius: 4px;
+          border-radius: 6px;
+        }
+        .ant-table-tbody > tr:hover > td {
+          background-color: #e6f7ff !important;
+        }
+        .editable-input:hover {
+          border-color: #40a9ff !important;
+          box-shadow: 0 0 0 2px rgba(24, 144, 255, 0.2) !important;
+        }
+        .editable-input:focus,
+        .editable-input:focus-within {
+          border-color: #1890ff !important;
+          box-shadow: 0 0 0 2px rgba(24, 144, 255, 0.2) !important;
+        }
+        .editable-input .ant-input-number-input {
+          border: none !important;
+          box-shadow: none !important;
+        }
+        .ant-table-tbody > tr > td .editable-input {
+          background: linear-gradient(135deg, #fff 0%, #f8faff 100%);
+          border: 1px solid #e8f0fe;
         }
       `}</style>
     </div>

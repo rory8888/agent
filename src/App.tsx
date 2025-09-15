@@ -9,6 +9,7 @@ import PDTForecastPage from './pages/PDTForecastPage';
 import PNDataPage from './pages/PNDataPage';
 import ForecastTemplatePage from './pages/ForecastTemplatePage';
 import PNFastEntry from './pages/PNFastEntry';
+import PNAuditPage from './pages/PNAuditPage';
 // import ForecastEntry from './pages/ForecastEntry';
 import 'antd/dist/reset.css';
 
@@ -36,6 +37,7 @@ const App: React.FC = () => {
           <Routes>
             <Route path="/" element={<SimpleDashboard />} />
             <Route path="/pn-fast-entry" element={<PNFastEntry />} />
+            <Route path="/pn-audit" element={<PNAuditPage />} />
             <Route path="/pdt-forecast" element={<PDTForecastPage />} />
             <Route path="/pn-data" element={<PNDataPage />} />
             <Route path="/forecast-template" element={<ForecastTemplatePage />} />
