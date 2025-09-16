@@ -4,18 +4,24 @@ import {
   Card, InputNumber, message, Form, Row, Col, 
   Statistic, Alert, Tooltip, Progress, Drawer, Tabs, Switch, Divider
 } from 'antd';
+const { Search } = Input;
 import { 
   EditOutlined, PlusOutlined, DeleteOutlined, SwapOutlined,
   ImportOutlined, ExportOutlined, SettingOutlined
 } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
+import { useForecastList, useDebouncedForecastUpdate, useImportForecast } from '../hooks/useForecast';
+import { useMetadata } from '../hooks/useDashboard';
+import { downloadFile } from '../services/api';
+import api from '../services/api';
 
 const { Title, Text } = Typography;
 const { Option } = Select;
 
 interface ForecastEntryData {
   key: string;
-  channel: string;           // 渠道
+  brand: string;            // 品牌
+  channel: string;           // 一级渠道
   sku: string;              // SKU
   pdt: string;              // PDT
   singularity: string;       // 奇点细分
@@ -32,8 +38,8 @@ interface ForecastEntryData {
   jul2025Sales: number;      // 25年7月销量
   aug2025Sales: number;      // 25年8月销量
   avgPrice: number;          // 成交均价(未税)
-  q3PlanTotal: number;       // Q3规划合计
-  currentSales: number;      // 当前销量
+  q3PlanTotal: number;       // Q3规划合计（M-3）
+  currentSales: number;      // Q3实际销量
   timeProgress: number;      // 时间进度
   vsTimeProgress: number;    // VS时间进度
   inventory: number;         // 库存
@@ -54,7 +60,8 @@ interface ForecastEntryData {
 }
 
 const generateTestData = (): ForecastEntryData[] => {
-  const channels = ['Amazon', 'Best Buy', 'Walmart', 'Target', 'eBay', '天猫', '京东', '拼多多'];
+  const brands = ['anker', 'soundcore'];
+  const channels = ['线下sales', '京东自营', '天猫自营', 'eBay', 'Walmart', 'Target', 'Best Buy', 'Amazon'];
   const pdts = ['PowerPort', 'PowerCore', 'SoundCore', 'Eufy', 'Nebula', 'AnkerWork', 'Roav', 'PowerWave'];
   const singularities = ['高端快充', '便携移动电源', '音频设备', '智能家居', '投影设备', '办公设备', '车载设备', '无线充电'];
   const cnCategories = ['充电器', '移动电源', '音响', '摄像头', '投影仪', '会议设备', '车载产品', '无线充电器'];
@@ -63,6 +70,7 @@ const generateTestData = (): ForecastEntryData[] => {
   const data: ForecastEntryData[] = [];
   
   for (let i = 1; i <= 152; i++) {
+    const brand = brands[Math.floor(Math.random() * brands.length)];
     const channel = channels[Math.floor(Math.random() * channels.length)];
     const pdt = pdts[Math.floor(Math.random() * pdts.length)];
     const singularity = singularities[Math.floor(Math.random() * singularities.length)];
@@ -90,6 +98,7 @@ const generateTestData = (): ForecastEntryData[] => {
     
     data.push({
       key: i.toString(),
+      brand,
       channel,
       sku: `A${String(1000 + i).slice(1)}-${['BK', 'WH', 'GY', 'BL', 'RD'][Math.floor(Math.random() * 5)]}-${['US', 'EU', 'JP', 'CN'][Math.floor(Math.random() * 4)]}`,
       pdt,
@@ -130,17 +139,45 @@ const generateTestData = (): ForecastEntryData[] => {
 };
 
 const PNFastEntry: React.FC = () => {
-  const [data, setData] = useState<ForecastEntryData[]>(generateTestData());
+  // 本地数据状态
+  const [localData, setLocalData] = useState<ForecastEntryData[]>(generateTestData());
+  const [useLocalData, setUseLocalData] = useState(true); // 默认使用本地数据
+  
+  // API hooks (仅在需要时使用)
+  const {
+    data: apiData,
+    loading: apiLoading,
+    pagination,
+    params,
+    handleTableChange,
+    updateParams,
+    refetch,
+  } = useForecastList({ size: 100 });
 
-  const [selectedRegion, setSelectedRegion] = useState<string>('全部');
-  const [selectedSales, setSelectedSales] = useState<string>('全部');
+  const { debouncedUpdate } = useDebouncedForecastUpdate();
+  const { upload: uploadFile, loading: uploadLoading } = useImportForecast();
+  const metadata = useMetadata();
+
+  
+  // 筛选状态
+  const [filters, setFilters] = useState({
+    brand: '',
+    channel: '',
+    sku: '',
+    pdt: '',
+    cnCategory: '',
+    pn: '',
+    singularity: '',
+    skuStatus: ''
+  });
+  const [searchText, setSearchText] = useState('');
   
   // 防抖处理
   const debounceTimer = useRef<NodeJS.Timeout>();
 
   // 列显示控制 - 默认显示所有列
   const [visibleColumns, setVisibleColumns] = useState<Set<string>>(new Set([
-    'channel', 'sku', 'pdt', 'singularity', 'pn', 'cnCategory', 'skuName', 'skuStatus',
+    'brand', 'channel', 'sku', 'pdt', 'singularity', 'pn', 'cnCategory', 'skuName', 'skuStatus',
     'jan2025Sales', 'feb2025Sales', 'mar2025Sales', 'apr2025Sales', 'may2025Sales', 'jun2025Sales', 'jul2025Sales', 'aug2025Sales',
     'avgPrice', 'q3PlanTotal', 'currentSales', 'timeProgress', 'vsTimeProgress', 'inventory', 'q3Total',
     'augForecast', 'sepForecast', 'octForecast', 'novForecast', 'decForecast',
@@ -150,36 +187,84 @@ const PNFastEntry: React.FC = () => {
   // 列设置抽屉
   const [columnSettingsOpen, setColumnSettingsOpen] = useState(false);
 
-  const regions = ['全部', '华东区', '华南区', '华北区', '华中区'];
-  const salesPersons = ['全部', '张三', '李四', '王五', 'rory'];
+  
+  // 可以从API获取的元数据
+  const { pdts, channels, singularities, categories } = metadata;
+  
+  // 筛选选项数据
+  const brands = ['anker', 'soundcore'];
+  const primaryChannels = ['线下sales', '京东自营', '天猫自营', 'eBay', 'Walmart', 'Target', 'Best Buy', 'Amazon'];
+  const pdtOptions = ['PowerPort', 'PowerCore', 'SoundCore', 'Eufy', 'Nebula', 'AnkerWork', 'Roav', 'PowerWave'];
+  const singularityOptions = ['高端快充', '便携移动电源', '音频设备', '智能家居', '投影设备', '办公设备', '车载设备', '无线充电'];
+  const cnCategoryOptions = ['充电器', '移动电源', '音响', '摄像头', '投影仪', '会议设备', '车载产品', '无线充电器'];
+  const skuStatusOptions = ['active', 'inactive', 'eol', 'new'];
 
-  const filteredData = data.filter(item => {
-    // 这里可以根据需要添加筛选逻辑
-    return true;
-  });
+  // 使用本地数据或API数据
+  const data = useLocalData ? localData : (apiData || []);
+  const loading = useLocalData ? false : apiLoading;
+  
+  // 处理搜索和筛选
+  const handleSearch = useCallback((value: string) => {
+    setSearchText(value);
+  }, []);
 
-  // 处理可编辑字段的变更（防抖优化）
-  const handleEditableFieldChange = useCallback((key: string, field: string, value: number | string) => {
-    // 清除之前的定时器
-    if (debounceTimer.current) {
-      clearTimeout(debounceTimer.current);
+  const handleFilterChange = useCallback((field: string, value: string) => {
+    setFilters(prev => ({ ...prev, [field]: value }));
+  }, []);
+
+  const filteredData = useMemo(() => {
+    let filtered = data;
+    
+    // 全文搜索
+    if (searchText) {
+      const searchLower = searchText.toLowerCase();
+      filtered = filtered.filter(item => 
+        item.brand.toLowerCase().includes(searchLower) ||
+        item.channel.toLowerCase().includes(searchLower) ||
+        item.sku.toLowerCase().includes(searchLower) ||
+        item.pdt.toLowerCase().includes(searchLower) ||
+        item.pn.toLowerCase().includes(searchLower) ||
+        item.cnCategory.toLowerCase().includes(searchLower) ||
+        item.singularity.toLowerCase().includes(searchLower) ||
+        item.skuName.toLowerCase().includes(searchLower)
+      );
     }
     
-    // 立即更新UI显示
-    setData(prevData => 
-      prevData.map(item => 
-        item.key === key 
-          ? { ...item, [field]: value }
-          : item
-      )
-    );
+    // 具体字段筛选
+    Object.keys(filters).forEach(key => {
+      const filterValue = filters[key as keyof typeof filters];
+      if (filterValue) {
+        if (key === 'sku' || key === 'pn') {
+          // SKU和PN支持模糊匹配
+          filtered = filtered.filter(item => 
+            String(item[key as keyof ForecastEntryData]).toLowerCase().includes(filterValue.toLowerCase())
+          );
+        } else {
+          // 其他字段精确匹配
+          filtered = filtered.filter(item => item[key as keyof ForecastEntryData] === filterValue);
+        }
+      }
+    });
     
-    // 防抖处理，200ms后执行实际的数据处理
-    debounceTimer.current = setTimeout(() => {
-      // 这里可以添加保存到后端的逻辑
-      console.log(`Field ${field} updated to ${value} for record ${key}`);
-    }, 200);
-  }, []);
+    return filtered;
+  }, [data, searchText, filters]);
+
+  // 处理可编辑字段的变更
+  const handleEditableFieldChange = useCallback((key: string, field: string, value: number | string) => {
+    if (useLocalData) {
+      // 本地模式：直接更新本地数据
+      setLocalData(prevData => 
+        prevData.map(item => 
+          item.key === key 
+            ? { ...item, [field]: value }
+            : item
+        )
+      );
+    } else {
+      // API模式：使用防抖API更新
+      debouncedUpdate(key, { [field]: value });
+    }
+  }, [useLocalData, debouncedUpdate]);
 
   const getSkuStatusColor = (status: string) => {
     const statusMap = {
@@ -211,10 +296,20 @@ const PNFastEntry: React.FC = () => {
 
   const allColumns = useMemo((): ColumnsType<ForecastEntryData> => [
     {
-      title: '渠道',
+      title: '品牌',
+      dataIndex: 'brand',
+      key: 'brand',
+      width: 80,
+      fixed: 'left',
+      render: (text: string) => (
+        <Tag color="purple" style={{ fontSize: '10px', textTransform: 'capitalize' }}>{text}</Tag>
+      )
+    },
+    {
+      title: '一级渠道',
       dataIndex: 'channel',
       key: 'channel',
-      width: 80,
+      width: 90,
       fixed: 'left',
       render: (text: string) => (
         <Tag color="blue" style={{ fontSize: '10px' }}>{text}</Tag>
@@ -382,7 +477,7 @@ const PNFastEntry: React.FC = () => {
       )
     },
     {
-      title: 'Q3规划合计',
+      title: 'Q3规划合计（M-3）',
       dataIndex: 'q3PlanTotal',
       key: 'q3PlanTotal',
       width: 100,
@@ -391,7 +486,7 @@ const PNFastEntry: React.FC = () => {
       )
     },
     {
-      title: '当前销量',
+      title: 'Q3实际销量',
       dataIndex: 'currentSales',
       key: 'currentSales',
       width: 90,
@@ -626,20 +721,65 @@ const PNFastEntry: React.FC = () => {
 
   // 列分组定义
   const columnGroups = useMemo(() => ({
-    basic: ['channel', 'sku', 'pdt', 'singularity', 'pn', 'cnCategory', 'skuName', 'skuStatus'],
+    basic: ['brand', 'channel', 'sku', 'pdt', 'singularity', 'pn', 'cnCategory', 'skuName', 'skuStatus'],
     sales: ['jan2025Sales', 'feb2025Sales', 'mar2025Sales', 'apr2025Sales', 'may2025Sales', 'jun2025Sales', 'jul2025Sales', 'aug2025Sales'],
     summary: ['avgPrice', 'q3PlanTotal', 'currentSales', 'timeProgress', 'vsTimeProgress', 'inventory', 'q3Total'],
     forecast: ['augForecast', 'sepForecast', 'octForecast', 'novForecast', 'decForecast'],
     corrected: ['aug2Corrected', 'sep2Corrected', 'oct2Corrected', 'nov2Corrected', 'dec2Corrected']
   }), []);
 
-  const handleSaveAll = () => {
-    message.success('所有预测数据已保存！');
-  };
+  const handleSaveAll = useCallback(() => {
+    if (useLocalData) {
+      message.success('本地模式：所有预测数据已保存在浏览器中！');
+    } else {
+      message.success('所有预测数据已自动保存！');
+    }
+  }, [useLocalData]);
 
-  const handleExport = () => {
-    message.info('正在导出预测收集数据...');
-  };
+  const handleExport = useCallback(async () => {
+    if (useLocalData) {
+      message.info('本地模式暂不支持导出功能，请连接API后使用');
+      return;
+    }
+    
+    try {
+      message.loading('正在导出预测收集数据...', 0);
+      const blob = await api.forecast.export(params);
+      downloadFile(blob, `预测收集数据_${new Date().toISOString().split('T')[0]}.xlsx`);
+      message.destroy();
+      message.success('导出成功！');
+    } catch (error) {
+      message.destroy();
+      message.error('导出失败，请重试');
+    }
+  }, [useLocalData, params]);
+
+  const handleImport = useCallback(async () => {
+    if (useLocalData) {
+      message.info('本地模式暂不支持导入功能，请连接API后使用');
+      return;
+    }
+    
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.xlsx,.xls,.csv';
+    input.onchange = async (e) => {
+      const file = (e.target as HTMLInputElement).files?.[0];
+      if (file) {
+        const result = await uploadFile(file);
+        if (result) {
+          refetch(); // 重新获取数据
+        }
+      }
+    };
+    input.click();
+  }, [useLocalData, uploadFile, refetch]);
+  
+  // 切换数据模式
+  const toggleDataMode = useCallback(() => {
+    setUseLocalData(prev => !prev);
+    message.info(useLocalData ? '切换到API模式' : '切换到本地模式');
+  }, [useLocalData]);
 
   // 计算统计数据
   const statisticsData = useMemo(() => {
@@ -676,6 +816,8 @@ const PNFastEntry: React.FC = () => {
             <Space>
               <Button 
                 icon={<ImportOutlined />}
+                onClick={handleImport}
+                loading={uploadLoading}
                 style={{ borderRadius: '6px' }}
               >
                 导入
@@ -695,6 +837,13 @@ const PNFastEntry: React.FC = () => {
                 列设置
               </Button>
               <Button 
+                type={useLocalData ? "default" : "primary"}
+                onClick={toggleDataMode}
+                style={{ borderRadius: '6px' }}
+              >
+                {useLocalData ? '连接API' : '本地模式'}
+              </Button>
+              <Button 
                 type="primary"
                 onClick={handleSaveAll}
                 style={{ borderRadius: '6px' }}
@@ -705,6 +854,22 @@ const PNFastEntry: React.FC = () => {
           </Col>
         </Row>
       </div>
+
+      {/* 错误提示 */}
+      {metadata.error && (
+        <Alert
+          message="数据加载失败"
+          description={metadata.error}
+          type="error"
+          showIcon
+          style={{ marginBottom: 16 }}
+          action={
+            <Button size="small" onClick={refetch}>
+              重试
+            </Button>
+          }
+        />
+      )}
 
       {/* 统计卡片 */}
       <Row gutter={[16, 16]} style={{ marginBottom: 16 }}>
@@ -744,34 +909,99 @@ const PNFastEntry: React.FC = () => {
           <Row gutter={[12, 12]} align="middle">
             <Col flex={1}>
               <Space wrap>
-                <Select
-                  value={selectedRegion}
-                  onChange={setSelectedRegion}
-                  style={{ width: 120 }}
+                <Search
+                  placeholder="搜索品牌/渠道/SKU/PDT/PN/品类/奇点细分"
+                  allowClear
+                  onSearch={handleSearch}
+                  style={{ width: 280 }}
                   size="small"
-                  placeholder="选择区域"
+                />
+                <Select
+                  placeholder="品牌"
+                  allowClear
+                  style={{ width: 90 }}
+                  size="small"
+                  onChange={(value) => handleFilterChange('brand', value || '')}
                 >
-                  {regions.map(region => (
-                    <Option key={region} value={region}>{region}</Option>
+                  {brands.map(brand => (
+                    <Option key={brand} value={brand}>{brand}</Option>
                   ))}
                 </Select>
                 <Select
-                  value={selectedSales}
-                  onChange={setSelectedSales}
+                  placeholder="一级渠道"
+                  allowClear
+                  style={{ width: 110 }}
+                  size="small"
+                  onChange={(value) => handleFilterChange('channel', value || '')}
+                >
+                  {primaryChannels.map(channel => (
+                    <Option key={channel} value={channel}>{channel}</Option>
+                  ))}
+                </Select>
+                <Select
+                  placeholder="PDT"
+                  allowClear
+                  style={{ width: 90 }}
+                  size="small"
+                  onChange={(value) => handleFilterChange('pdt', value || '')}
+                >
+                  {pdtOptions.map(pdt => (
+                    <Option key={pdt} value={pdt}>{pdt}</Option>
+                  ))}
+                </Select>
+                <Select
+                  placeholder="CN品类"
+                  allowClear
+                  style={{ width: 90 }}
+                  size="small"
+                  onChange={(value) => handleFilterChange('cnCategory', value || '')}
+                >
+                  {cnCategoryOptions.map(category => (
+                    <Option key={category} value={category}>{category}</Option>
+                  ))}
+                </Select>
+                <Input
+                  placeholder="输入SKU"
+                  allowClear
                   style={{ width: 120 }}
                   size="small"
-                  placeholder="选择Sales"
+                  onChange={(e) => handleFilterChange('sku', e.target.value)}
+                />
+                <Input
+                  placeholder="输入PN"
+                  allowClear
+                  style={{ width: 100 }}
+                  size="small"
+                  onChange={(e) => handleFilterChange('pn', e.target.value)}
+                />
+                <Select
+                  placeholder="奇点细分"
+                  allowClear
+                  style={{ width: 110 }}
+                  size="small"
+                  onChange={(value) => handleFilterChange('singularity', value || '')}
                 >
-                  {salesPersons.map(person => (
-                    <Option key={person} value={person}>{person}</Option>
+                  {singularityOptions.map(segment => (
+                    <Option key={segment} value={segment}>{segment}</Option>
+                  ))}
+                </Select>
+                <Select
+                  placeholder="SKU状态"
+                  allowClear
+                  style={{ width: 100 }}
+                  size="small"
+                  onChange={(value) => handleFilterChange('skuStatus', value || '')}
+                >
+                  {skuStatusOptions.map(status => (
+                    <Option key={status} value={status}>
+                      {status === 'active' ? '在售' : 
+                       status === 'inactive' ? '停售' : 
+                       status === 'eol' ? 'EOL' : 
+                       status === 'new' ? '新品' : status}
+                    </Option>
                   ))}
                 </Select>
               </Space>
-            </Col>
-            <Col>
-              <Text type="secondary" style={{ fontSize: '13px' }}>
-                当前显示 {filteredData.length} 条记录 | 预测字段可编辑
-              </Text>
             </Col>
           </Row>
         </div>
@@ -780,14 +1010,24 @@ const PNFastEntry: React.FC = () => {
         <Table
           columns={columns}
           dataSource={filteredData}
+          loading={loading}
           size="small"
-          pagination={{
-            defaultPageSize: 100,
+          pagination={useLocalData ? {
+            pageSize: 100,
+            showSizeChanger: true,
+            showQuickJumper: true,
+            showTotal: (total, range) => `显示 ${range[0]}-${range[1]} 条，共 ${total} 条`,
+            pageSizeOptions: ['100', '200', '500'],
+          } : {
+            current: pagination.current,
+            pageSize: pagination.pageSize,
+            total: pagination.total,
             showSizeChanger: true,
             showQuickJumper: true,
             showTotal: (total, range) => `显示 ${range[0]}-${range[1]} 条，共 ${total} 条`,
             pageSizeOptions: ['100', '200', '500'],
           }}
+          onChange={useLocalData ? undefined : handleTableChange}
           scroll={{ x: 2800, y: 600 }}
           bordered
         />
@@ -898,7 +1138,7 @@ const PNFastEntry: React.FC = () => {
           <Button 
             size="small"
             onClick={() => {
-              setVisibleColumns(new Set(['channel', 'sku', 'pdt', 'pn', 'augForecast', 'sepForecast', 'octForecast', 'novForecast', 'decForecast']));
+              setVisibleColumns(new Set(['brand', 'channel', 'sku', 'pdt', 'pn', 'augForecast', 'sepForecast', 'octForecast', 'novForecast', 'decForecast']));
             }}
           >
             重置

@@ -61,6 +61,9 @@ export const mockPDTData: PDTForecast[] = [
 
 // 生成大量测试数据的函数
 const generatePNData = (count: number): PNData[] => {
+  const brands = ['anker', 'soundcore'];
+  const channels = ['线下sales', '京东自营', '天猫自营', 'eBay', 'Walmart', 'Target', 'Best Buy', 'Amazon'];
+  const cnCategories = ['充电器', '移动电源', '音响', '摄像头', '投影仪', '会议设备', '车载产品', '无线充电器'];
   const pdtNames = ['Gssential', 'PowerPort', 'PowerCore', 'PowerLine', 'SoundCore', 'Eufy'];
   const pnCodes = ['A2698', 'A2637', 'A1266', 'A8856', 'A3945', 'A7908', 'A2567', 'A1347', 'A9821', 'A5634'];
   const pnSuffixes = ['20w-30w', '65w-fast', '10000mah', 'usb-c-pro', '3ft-cable', 'wireless-pro', 'compact-mini', 'ultra-slim', 'high-speed', 'premium'];
@@ -84,6 +87,9 @@ const generatePNData = (count: number): PNData[] => {
   const data: PNData[] = [];
   
   for (let i = 0; i < count; i++) {
+    const brand = brands[Math.floor(Math.random() * brands.length)];
+    const channel = channels[Math.floor(Math.random() * channels.length)];
+    const cnCategory = cnCategories[Math.floor(Math.random() * cnCategories.length)];
     const pdtName = pdtNames[Math.floor(Math.random() * pdtNames.length)];
     const pnCode = pnCodes[Math.floor(Math.random() * pnCodes.length)];
     const pnSuffix = pnSuffixes[Math.floor(Math.random() * pnSuffixes.length)];
@@ -94,8 +100,12 @@ const generatePNData = (count: number): PNData[] => {
     
     data.push({
       key: (i + 1).toString(),
+      brand,
+      channel,
+      sku: `${pnCode}-${['BK', 'WH', 'GY', 'BL', 'RD'][Math.floor(Math.random() * 5)]}-${['US', 'EU', 'JP', 'CN'][Math.floor(Math.random() * 4)]}`,
       pdt: pdtName,
       pn: pnCode,
+      cnCategory,
       singularitySegment: segments[Math.floor(Math.random() * segments.length)],
       productStatus: statuses[statusIndex] as 'active' | 'inactive' | 'new' | 'eol',
       salesTrend: trends[Math.floor(Math.random() * trends.length)] as 'rising' | 'stable' | 'declining',
@@ -258,8 +268,10 @@ export const mockKPIData: KPIMetric[] = [
 ];
 
 // 基础数据选项
-export const cnCategories = ['充电器', '移动电源', '数据线', '无线充电器', '车载充电器', '音频设备'];
-export const channels = ['Amazon', 'Best Buy', 'Walmart', 'Target', 'Costco', '天猫', '京东'];
+export const brands = ['anker', 'soundcore'];
+export const cnCategories = ['充电器', '移动电源', '音响', '摄像头', '投影仪', '会议设备', '车载产品', '无线充电器'];
+export const channels = ['线下sales', '京东自营', '天猫自营', 'eBay', 'Walmart', 'Target', 'Best Buy', 'Amazon'];
+export const pdts = ['Gssential', 'PowerPort', 'PowerCore', 'PowerLine', 'SoundCore', 'Eufy'];
 export const productStatuses = ['active', 'inactive', 'eol', 'new'];
 export const salesTrends = ['rising', 'stable', 'declining'];
-export const singularitySegments = ['高端快充', '便携移动电源', 'USB-C数据线', '无线快充', '车载快充', '音频配件'];
+export const singularitySegments = ['高端快充', '便携移动电源', 'USB-C数据线', '无线充电器', '车载充电器', '音频配件', '智能家居', '存储设备'];

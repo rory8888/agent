@@ -40,7 +40,7 @@ import {
 } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
 import { PNData } from '../types';
-import { mockPNData, singularitySegments, productStatuses, salesTrends } from '../data/mockData';
+import { mockPNData, brands, channels, cnCategories, pdts, singularitySegments, productStatuses, salesTrends } from '../data/mockData';
 
 const { Title, Text } = Typography;
 const { Option } = Select;
@@ -52,6 +52,12 @@ const PNDataTable: React.FC = () => {
   const [filteredData, setFilteredData] = useState<PNData[]>(mockPNData);
   const [searchText, setSearchText] = useState('');
   const [filters, setFilters] = useState({
+    brand: '',
+    channel: '',
+    sku: '',
+    pdt: '',
+    cnCategory: '',
+    pn: '',
     singularitySegment: '',
     productStatus: '',
     salesTrend: ''
@@ -61,7 +67,7 @@ const PNDataTable: React.FC = () => {
   
   // 列显示控制 - 默认显示所有列
   const [visibleColumns, setVisibleColumns] = useState<Set<string>>(new Set([
-    'pdt', 'pn', 'singularitySegment', 'productStatus', 'salesTrend',
+    'brand', 'channel', 'sku', 'pdt', 'pn', 'cnCategory', 'singularitySegment', 'productStatus', 'salesTrend',
     'q3ForecastQuantity', 'q3ForecastAmount', 'julyForecast', 'augustForecast', 'septemberForecast',
     'actualShipment', 'timeProgress', 'shipmentVolume', 'salesAchievementRate',
     'timeGap', 'quarterGap', 'offlineInventory', 'offlineSuper', 'omniChannelInventory', 'remarks'
@@ -150,15 +156,27 @@ const PNDataTable: React.FC = () => {
     if (search) {
       const searchLower = search.toLowerCase();
       filtered = filtered.filter(item => 
+        item.brand.toLowerCase().includes(searchLower) ||
+        item.channel.toLowerCase().includes(searchLower) ||
+        item.sku.toLowerCase().includes(searchLower) ||
         item.pdt.toLowerCase().includes(searchLower) ||
         item.pn.toLowerCase().includes(searchLower) ||
+        item.cnCategory.toLowerCase().includes(searchLower) ||
         item.singularitySegment.toLowerCase().includes(searchLower)
       );
     }
     
     Object.keys(filterParams).forEach(key => {
       if (filterParams[key]) {
-        filtered = filtered.filter(item => item[key as keyof PNData] === filterParams[key]);
+        // For text input fields (SKU, PN), use includes for partial matching
+        if (key === 'sku' || key === 'pn') {
+          filtered = filtered.filter(item => 
+            String(item[key as keyof PNData]).toLowerCase().includes(filterParams[key].toLowerCase())
+          );
+        } else {
+          // For dropdown filters, use exact matching
+          filtered = filtered.filter(item => item[key as keyof PNData] === filterParams[key]);
+        }
       }
     });
     
@@ -209,6 +227,54 @@ const PNDataTable: React.FC = () => {
   // 所有可用的列定义
   const allColumns: ColumnsType<PNData> = useMemo(() => [
     {
+      title: '品牌',
+      dataIndex: 'brand',
+      key: 'brand',
+      fixed: 'left',
+      width: 80,
+      render: (text: string) => (
+        <Tag color="purple" style={{ fontSize: '10px', textTransform: 'capitalize' }}>
+          {text}
+        </Tag>
+      ),
+      sorter: (a, b) => a.brand.localeCompare(b.brand),
+    },
+    {
+      title: '一级渠道',
+      dataIndex: 'channel',
+      key: 'channel',
+      fixed: 'left',
+      width: 90,
+      render: (text: string) => (
+        <Tag color="blue" style={{ fontSize: '10px' }}>
+          {text}
+        </Tag>
+      ),
+      sorter: (a, b) => a.channel.localeCompare(b.channel),
+    },
+    {
+      title: 'SKU',
+      dataIndex: 'sku',
+      key: 'sku',
+      fixed: 'left',
+      width: 120,
+      render: (text: string) => (
+        <Text 
+          code 
+          style={{ 
+            fontSize: '11px',
+            color: '#1890ff',
+            background: '#e6f7ff',
+            padding: '2px 4px',
+            borderRadius: '3px'
+          }}
+        >
+          {text}
+        </Text>
+      ),
+      sorter: (a, b) => a.sku.localeCompare(b.sku),
+    },
+    {
       title: 'PDT',
       dataIndex: 'pdt',
       key: 'pdt',
@@ -244,6 +310,18 @@ const PNDataTable: React.FC = () => {
         </Text>
       ),
       sorter: (a, b) => a.pn.localeCompare(b.pn),
+    },
+    {
+      title: 'CN品类',
+      dataIndex: 'cnCategory',
+      key: 'cnCategory',
+      width: 90,
+      render: (text: string) => (
+        <Tag color="orange" style={{ fontSize: '10px' }}>
+          {text}
+        </Tag>
+      ),
+      sorter: (a, b) => a.cnCategory.localeCompare(b.cnCategory),
     },
     {
       title: '奇点细分',
@@ -496,7 +574,7 @@ const PNDataTable: React.FC = () => {
 
   // 列分组定义
   const columnGroups = useMemo(() => ({
-    basic: ['pdt', 'pn', 'singularitySegment', 'productStatus', 'salesTrend'],
+    basic: ['brand', 'channel', 'sku', 'pdt', 'pn', 'cnCategory', 'singularitySegment', 'productStatus', 'salesTrend'],
     forecast: ['q3ForecastQuantity', 'q3ForecastAmount', 'julyForecast', 'augustForecast', 'septemberForecast'],
     shipment: ['actualShipment', 'timeProgress', 'shipmentVolume', 'salesAchievementRate'],
     inventory: ['offlineInventory', 'offlineSuper', 'omniChannelInventory'],
@@ -595,11 +673,71 @@ const PNDataTable: React.FC = () => {
             <Col flex={1}>
               <Space wrap>
                 <Search
-                  placeholder="搜索PDT/PN/奇点细分"
+                  placeholder="搜索品牌/渠道/SKU/PDT/PN/品类/奇点细分"
                   allowClear
                   onSearch={handleSearch}
-                  style={{ width: 200 }}
+                  style={{ width: 280 }}
                   prefix={<SearchOutlined />}
+                />
+                <Select
+                  placeholder="品牌"
+                  allowClear
+                  style={{ width: 90 }}
+                  onChange={(value) => handleFilterChange('brand', value)}
+                >
+                  {brands.map(brand => (
+                    <Option key={brand} value={brand}>
+                      {brand}
+                    </Option>
+                  ))}
+                </Select>
+                <Select
+                  placeholder="一级渠道"
+                  allowClear
+                  style={{ width: 110 }}
+                  onChange={(value) => handleFilterChange('channel', value)}
+                >
+                  {channels.map(channel => (
+                    <Option key={channel} value={channel}>
+                      {channel}
+                    </Option>
+                  ))}
+                </Select>
+                <Select
+                  placeholder="PDT"
+                  allowClear
+                  style={{ width: 90 }}
+                  onChange={(value) => handleFilterChange('pdt', value)}
+                >
+                  {pdts.map(pdt => (
+                    <Option key={pdt} value={pdt}>
+                      {pdt}
+                    </Option>
+                  ))}
+                </Select>
+                <Select
+                  placeholder="CN品类"
+                  allowClear
+                  style={{ width: 90 }}
+                  onChange={(value) => handleFilterChange('cnCategory', value)}
+                >
+                  {cnCategories.map(category => (
+                    <Option key={category} value={category}>
+                      {category}
+                    </Option>
+                  ))}
+                </Select>
+                <Input
+                  placeholder="输入SKU"
+                  allowClear
+                  style={{ width: 120 }}
+                  onChange={(e) => handleFilterChange('sku', e.target.value)}
+                />
+                <Input
+                  placeholder="输入PN"
+                  allowClear
+                  style={{ width: 100 }}
+                  onChange={(e) => handleFilterChange('pn', e.target.value)}
                 />
                 <Select
                   placeholder="奇点细分"
@@ -846,7 +984,7 @@ const PNDataTable: React.FC = () => {
           <Button 
             size="small"
             onClick={() => {
-              setVisibleColumns(new Set(['pdt', 'pn', 'action']));
+              setVisibleColumns(new Set(['brand', 'channel', 'sku', 'pdt', 'pn', 'cnCategory', 'action']));
             }}
           >
             重置

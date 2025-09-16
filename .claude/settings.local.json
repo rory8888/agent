@@ -21,7 +21,9 @@
       "Bash(git push:*)",
       "Bash(git fetch:*)",
       "Bash(git branch:*)",
-      "Bash(gh run list:*)"
+      "Bash(gh run list:*)",
+      "Bash(npm install axios)",
+      "Bash(npx tsc:*)"
     ],
     "deny": [],
     "ask": []
